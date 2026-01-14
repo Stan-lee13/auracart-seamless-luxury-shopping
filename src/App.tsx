@@ -2,14 +2,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CartProvider } from "@/contexts/CartContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
-import Index from "./pages/Index";
+import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
+import { SearchFiltersBar } from "@/components/search/SearchFiltersBar";
+import Landing from "./pages/Landing";
 import Shop from "./pages/Shop";
 import Product from "./pages/Product";
 import Cart from "./pages/Cart";
@@ -18,6 +19,58 @@ import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+// Route guard component
+function AuthAwareRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+  
+  // Logged-in users go to shop, logged-out users see landing
+  if (user) {
+    return <Navigate to="/shop" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+function AppRoutes() {
+  const { user } = useAuth();
+  
+  return (
+    <div className="flex flex-col min-h-screen">
+      <Navbar />
+      {/* Search bar under navbar for logged-in users on shop pages */}
+      <SearchFiltersBar />
+      <main className="flex-1 pt-16 md:pt-20 pb-20 md:pb-0">
+        <Routes>
+          {/* Landing page - only for logged-out users */}
+          <Route path="/" element={
+            <AuthAwareRoute>
+              <Landing />
+            </AuthAwareRoute>
+          } />
+          <Route path="/shop" element={<Shop />} />
+          <Route path="/product/:slug" element={<Product />} />
+          <Route path="/cart" element={<Cart />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/account" element={<Account />} />
+          <Route path="/categories" element={<Shop />} />
+          <Route path="/search" element={<Shop />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      <MobileBottomNav />
+      <CartDrawer />
+    </div>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -28,22 +81,7 @@ const App = () => (
             <Toaster />
             <Sonner />
             <BrowserRouter>
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <main className="flex-1 pt-16 md:pt-20">
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/shop" element={<Shop />} />
-                    <Route path="/product/:slug" element={<Product />} />
-                    <Route path="/cart" element={<Cart />} />
-                    <Route path="/auth" element={<Auth />} />
-                    <Route path="/account" element={<Account />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </main>
-                <Footer />
-              </div>
-              <CartDrawer />
+              <AppRoutes />
             </BrowserRouter>
           </TooltipProvider>
         </CartProvider>

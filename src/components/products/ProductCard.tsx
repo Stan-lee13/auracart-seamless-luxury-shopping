@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Heart, ShoppingBag, Eye } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserInteractions } from '@/hooks/useUserInteractions';
 import type { Product } from '@/hooks/useProducts';
 
 interface ProductCardProps {
@@ -16,10 +18,18 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const { addItem } = useCart();
+  const { user } = useAuth();
+  const { trackCartAddition } = useUserInteractions();
+  const navigate = useNavigate();
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!user) {
+      navigate('/auth?redirect=' + encodeURIComponent(`/product/${product.slug}`));
+      return;
+    }
     
     addItem({
       productId: product.id,
@@ -28,12 +38,26 @@ export function ProductCard({ product, className }: ProductCardProps) {
       image: product.thumbnail_url || product.images?.[0] || '/placeholder.svg',
       quantity: 1,
     });
+    
+    trackCartAddition(product.id, product.category_id || undefined);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    
     setIsWishlisted(!isWishlisted);
+  };
+
+  const handleView = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/product/${product.slug}`);
   };
 
   return (
@@ -61,24 +85,38 @@ export function ProductCard({ product, className }: ProductCardProps) {
             animate={{ opacity: isHovered ? 1 : 0 }}
             transition={{ duration: 0.2 }}
           >
-            <Button
-              size="icon"
-              variant="secondary"
-              className="h-10 w-10 rounded-full glass-card"
-              onClick={handleAddToCart}
-            >
-              <ShoppingBag className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="secondary"
-              className="h-10 w-10 rounded-full glass-card"
-              asChild
-            >
-              <Link to={`/product/${product.slug}`}>
+            {/* Show different button based on auth state */}
+            {user ? (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-10 w-10 rounded-full glass-card"
+                onClick={handleAddToCart}
+              >
+                <ShoppingBag className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="rounded-full glass-card px-4"
+                onClick={handleView}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                View
+              </Button>
+            )}
+            
+            {user && (
+              <Button
+                size="icon"
+                variant="secondary"
+                className="h-10 w-10 rounded-full glass-card"
+                onClick={handleView}
+              >
                 <Eye className="h-4 w-4" />
-              </Link>
-            </Button>
+              </Button>
+            )}
           </motion.div>
 
           {/* Wishlist Button */}
