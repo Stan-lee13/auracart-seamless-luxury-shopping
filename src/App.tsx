@@ -10,6 +10,11 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import Index from "./pages/Index";
+import Shop from "./pages/Shop";
+import Product from "./pages/Product";
+import Cart from "./pages/Cart";
+import Auth from "./pages/Auth";
+import Account from "./pages/Account";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +33,11 @@ const App = () => (
                 <main className="flex-1 pt-16 md:pt-20">
                   <Routes>
                     <Route path="/" element={<Index />} />
+                    <Route path="/shop" element={<Shop />} />
+                    <Route path="/product/:slug" element={<Product />} />
+                    <Route path="/cart" element={<Cart />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/account" element={<Account />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>
