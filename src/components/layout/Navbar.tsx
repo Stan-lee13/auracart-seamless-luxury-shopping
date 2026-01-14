@@ -1,25 +1,21 @@
 import { Link, useLocation } from 'react-router-dom';
-import { ShoppingBag, Search, User, Menu, X, Heart } from 'lucide-react';
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { ShoppingBag, User, Heart } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
-const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/shop', label: 'Shop' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/about', label: 'About' },
-];
-
 export function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { totalItems, setIsOpen } = useCart();
   const { user } = useAuth();
   const location = useLocation();
+
+  // Hide navbar on landing page for logged-out users
+  if (location.pathname === '/' && !user) {
+    return null;
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 nav-blur border-b border-border/50">
@@ -27,7 +23,7 @@ export function Navbar() {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link 
-            to="/" 
+            to={user ? "/shop" : "/"} 
             className="flex items-center gap-2 group"
           >
             <motion.span 
@@ -39,30 +35,8 @@ export function Navbar() {
             </motion.span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                to={link.href}
-                className={cn(
-                  "text-sm font-medium animated-underline transition-colors",
-                  location.pathname === link.href
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Search className="h-5 w-5" />
-            </Button>
-            
             <Button variant="ghost" size="icon" className="rounded-full" asChild>
               <Link to="/wishlist">
                 <Heart className="h-5 w-5" />
@@ -97,7 +71,7 @@ export function Navbar() {
             <ThemeToggle />
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile - just cart and theme (bottom nav handles the rest) */}
           <div className="flex md:hidden items-center gap-2">
             <Button 
               variant="ghost" 
@@ -113,64 +87,10 @@ export function Navbar() {
               )}
             </Button>
             
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="rounded-full"
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
+            <ThemeToggle />
           </div>
         </div>
       </nav>
-
-      {/* Mobile Menu */}
-      <AnimatePresence>
-        {mobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-background border-b border-border"
-          >
-            <div className="container-luxury py-4 space-y-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "block py-2 text-lg font-medium transition-colors",
-                    location.pathname === link.href
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {link.label}
-                </Link>
-              ))}
-              
-              <div className="flex items-center gap-4 pt-4 border-t border-border">
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <Search className="h-5 w-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="rounded-full" asChild>
-                  <Link to="/wishlist">
-                    <Heart className="h-5 w-5" />
-                  </Link>
-                </Button>
-                <Button variant="ghost" size="icon" className="rounded-full" asChild>
-                  <Link to={user ? "/account" : "/auth"}>
-                    <User className="h-5 w-5" />
-                  </Link>
-                </Button>
-                <ThemeToggle />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </header>
   );
 }

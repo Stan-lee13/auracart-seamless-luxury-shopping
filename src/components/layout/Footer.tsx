@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Instagram, Youtube, Mail, MapPin, Phone } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Youtube, Mail, MapPin } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -44,8 +44,8 @@ export function Footer() {
               </span>
             </Link>
             <p className="mt-4 text-muted-foreground text-sm max-w-sm">
-              Your destination for luxury products with global delivery. 
-              Experience premium shopping with AI-powered recommendations.
+              Pieces that quietly elevate your presence. 
+              Premium products curated with care, delivered worldwide.
             </p>
             
             {/* Newsletter */}
@@ -67,15 +67,11 @@ export function Footer() {
             <div className="mt-6 space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
-                <span>support@auracart.com</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
-                <span>+234 800 000 0000</span>
+                <span>auracart4u@gmail.com</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />
-                <span>Lagos, Nigeria</span>
+                <span>Shipping Globally</span>
               </div>
             </div>
           </div>
