@@ -840,6 +840,66 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          created_at: string
+          event_id: string
+          event_type: string
+          id: string
+          payload: Json
+          processed_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          event_type: string
+          id?: string
+          payload: Json
+          processed_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          processed_at?: string
+        }
+        Relationships: []
+      }
+      webhook_failures: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_id: string
+          event_type: string
+          id: string
+          last_retry_at: string | null
+          payload: Json
+          retry_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_id: string
+          event_type: string
+          id?: string
+          last_retry_at?: string | null
+          payload: Json
+          retry_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          last_retry_at?: string | null
+          payload?: Json
+          retry_count?: number | null
+        }
+        Relationships: []
+      }
       wishlist_items: {
         Row: {
           created_at: string

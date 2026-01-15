@@ -1,26 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { RefreshCw, RefreshCcw, X } from 'lucide-react';
 import logger from '@/lib/logger';
 
-export default function AdminRefunds() {
-  const { user, session } = useAuth();
-  type Refund = { id?: string; order_id?: string; refund_amount?: number; currency?: string; status?: string; reason?: string; created_at?: string; admin_notes?: string };
+type Refund = { 
+  id?: string; 
+  order_id?: string; 
+  refund_amount?: number; 
+  currency?: string; 
+  status?: string; 
+  reason?: string; 
+  created_at?: string; 
+  admin_notes?: string 
+};
 
+export default function AdminRefunds() {
+  const { session } = useAuth();
   const [refunds, setRefunds] = useState<Refund[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedRefund, setSelectedRefund] = useState<Refund | null>(null);
 
   useEffect(() => {
-    if (!user || !session) return;
     fetchRefunds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, session]);
+  }, [session]);
 
   async function fetchRefunds() {
+    if (!session?.access_token) return;
     setLoading(true);
     try {
       const res = await fetch('/api/admin/refunds', {
@@ -35,33 +45,44 @@ export default function AdminRefunds() {
     }
   }
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'pending': 'bg-yellow-100 text-yellow-800',
-      'requested': 'bg-blue-100 text-blue-800',
-      'processing': 'bg-orange-100 text-orange-800',
-      'completed': 'bg-green-100 text-green-800',
-      'failed': 'bg-red-100 text-red-800'
+  const getStatusColor = (status?: string) => {
+    const colors: Record<string, string> = {
+      'pending': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      'requested': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+      'processing': 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+      'completed': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      'failed': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status || ''] || 'bg-muted text-muted-foreground';
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Refunds Management</h1>
-        <Button onClick={fetchRefunds} disabled={loading}>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold flex items-center gap-2">
+            <RefreshCcw className="h-6 w-6 text-primary" />
+            Refunds Management
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            Process and track customer refund requests
+          </p>
+        </div>
+        <Button onClick={fetchRefunds} disabled={loading} className="btn-luxury">
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           {loading ? 'Loading...' : 'Refresh'}
         </Button>
       </div>
 
-      <Card>
+      {/* Refunds Table */}
+      <Card className="glass-card">
         <CardHeader>
           <CardTitle>Refund Requests</CardTitle>
         </CardHeader>
         <CardContent>
           {refunds.length === 0 ? (
-            <p className="text-gray-500">No refunds to display</p>
+            <p className="text-muted-foreground text-center py-8">No refunds to display</p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -71,23 +92,31 @@ export default function AdminRefunds() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Reason</TableHead>
-                    <TableHead>Requested At</TableHead>
+                    <TableHead>Requested</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {refunds.map((refund) => (
-                    <TableRow key={refund.id}>
-                      <TableCell className="font-mono text-sm">{refund.order_id?.slice(0, 8)}</TableCell>
-                      <TableCell>{refund.refund_amount} {refund.currency || 'NGN'}</TableCell>
+                    <TableRow key={refund.id} className="hover:bg-muted/50">
+                      <TableCell className="font-mono text-sm">
+                        {refund.order_id?.slice(0, 8)}...
+                      </TableCell>
+                      <TableCell className="price-display">
+                        ₦{Number(refund.refund_amount || 0).toLocaleString()}
+                      </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(refund.status)}>
                           {refund.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{refund.reason || '-'}</TableCell>
-                      <TableCell className="text-sm">
-                        {new Date(refund.created_at).toLocaleDateString()}
+                      <TableCell className="text-sm max-w-[200px] truncate">
+                        {refund.reason || '-'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {refund.created_at 
+                          ? new Date(refund.created_at).toLocaleDateString() 
+                          : '-'}
                       </TableCell>
                       <TableCell>
                         <Button
@@ -107,43 +136,61 @@ export default function AdminRefunds() {
         </CardContent>
       </Card>
 
+      {/* Refund Details Modal */}
       {selectedRefund && (
-        <Card className="border-blue-200">
-          <CardHeader>
+        <Card className="glass-card border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Refund Details</CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setSelectedRefund(null)}
+              aria-label="Close details"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-semibold text-gray-600">Refund ID</p>
-                <p className="font-mono">{selectedRefund.id}</p>
+                <p className="text-sm font-medium text-muted-foreground">Refund ID</p>
+                <p className="font-mono text-sm">{selectedRefund.id}</p>
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-600">Order ID</p>
-                <p className="font-mono">{selectedRefund.order_id}</p>
+                <p className="text-sm font-medium text-muted-foreground">Order ID</p>
+                <p className="font-mono text-sm">{selectedRefund.order_id}</p>
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-600">Amount</p>
-                <p>{selectedRefund.refund_amount} {selectedRefund.currency || 'NGN'}</p>
+                <p className="text-sm font-medium text-muted-foreground">Amount</p>
+                <p className="price-display text-lg">
+                  ₦{Number(selectedRefund.refund_amount || 0).toLocaleString()}
+                </p>
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-600">Status</p>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
                 <Badge className={getStatusColor(selectedRefund.status)}>
                   {selectedRefund.status}
                 </Badge>
               </div>
-              <div className="col-span-2">
-                <p className="text-sm font-semibold text-gray-600">Reason</p>
-                <p>{selectedRefund.reason || 'No reason provided'}</p>
+              <div className="sm:col-span-2">
+                <p className="text-sm font-medium text-muted-foreground">Reason</p>
+                <p className="text-sm">{selectedRefund.reason || 'No reason provided'}</p>
               </div>
-              <div className="col-span-2">
-                <p className="text-sm font-semibold text-gray-600">Admin Notes</p>
-                <pre className="bg-gray-50 p-2 rounded text-xs overflow-auto max-h-40">
-                  {selectedRefund.admin_notes ? JSON.stringify(JSON.parse(selectedRefund.admin_notes), null, 2) : 'None'}
-                </pre>
-              </div>
+              {selectedRefund.admin_notes && (
+                <div className="sm:col-span-2">
+                  <p className="text-sm font-medium text-muted-foreground">Admin Notes</p>
+                  <pre className="bg-muted p-3 rounded-lg text-xs overflow-auto max-h-40">
+                    {(() => {
+                      try {
+                        return JSON.stringify(JSON.parse(selectedRefund.admin_notes), null, 2);
+                      } catch {
+                        return selectedRefund.admin_notes;
+                      }
+                    })()}
+                  </pre>
+                </div>
+              )}
             </div>
-            <Button onClick={() => setSelectedRefund(null)}>Close</Button>
           </CardContent>
         </Card>
       )}

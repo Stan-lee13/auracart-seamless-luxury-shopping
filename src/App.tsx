@@ -16,6 +16,14 @@ import Product from "./pages/Product";
 import Cart from "./pages/Cart";
 import Auth from "./pages/Auth";
 import Account from "./pages/Account";
+import Checkout from "./pages/Checkout";
+import Orders from "./pages/Orders";
+import OrderDetail from "./pages/OrderDetail";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminOrders from "./pages/AdminOrders";
+import AdminRefunds from "./pages/AdminRefunds";
+import AdminDisputes from "./pages/AdminDisputes";
+import AdminSuppliers from "./pages/AdminSuppliers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,8 +49,6 @@ function AuthAwareRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth();
-  
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -56,13 +62,32 @@ function AppRoutes() {
               <Landing />
             </AuthAwareRoute>
           } />
+          
+          {/* Shop & Product Routes */}
           <Route path="/shop" element={<Shop />} />
           <Route path="/product/:slug" element={<Product />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/account" element={<Account />} />
+          <Route path="/checkout" element={<Checkout />} />
           <Route path="/categories" element={<Shop />} />
           <Route path="/search" element={<Shop />} />
+          
+          {/* Auth */}
+          <Route path="/auth" element={<Auth />} />
+          
+          {/* User Account & Orders */}
+          <Route path="/account" element={<Account />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/order/:id" element={<OrderDetail />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/orders" replace />} />
+            <Route path="orders" element={<AdminOrders />} />
+            <Route path="refunds" element={<AdminRefunds />} />
+            <Route path="disputes" element={<AdminDisputes />} />
+            <Route path="suppliers" element={<AdminSuppliers />} />
+          </Route>
+          
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
