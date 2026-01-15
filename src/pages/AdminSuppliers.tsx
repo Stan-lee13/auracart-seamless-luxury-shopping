@@ -10,10 +10,22 @@ export default function AdminSuppliers() {
   const { user, session } = useAuth();
   type Supplier = { id?: string; supplier_name?: string; sla_score?: number; sla_grade?: string; total_orders?: number; fulfillment_rate?: number; on_time_delivery_rate?: number; fulfilled_orders?: number; cancellation_rate?: number; return_rate?: number; dispute_count?: number; return_count?: number };
 
+  type SupplierOrder = {
+    id?: string;
+    aura_order_id?: string;
+    status?: string;
+    quantity?: number;
+    created_at?: string;
+  };
+
+  type SupplierDetail = {
+    orders?: SupplierOrder[];
+  };
+
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [supplierDetail, setSupplierDetail] = useState<Record<string, unknown> | null>(null);
+  const [supplierDetail, setSupplierDetail] = useState<SupplierDetail | null>(null);
 
   useEffect(() => {
     if (!user || !session) return;

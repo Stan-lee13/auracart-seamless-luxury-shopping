@@ -25,7 +25,7 @@ export default function Checkout() {
       });
       const json = await res.json();
       const authUrl = json?.init?.data?.authorization_url || json?.init?.authorization_url || json?.authorization_url || null;
-      const reference = json?.order?.order_number || payload.reference || (json?.init?.data?.reference || null);
+      const reference = json?.order?.order_number || json?.init?.data?.reference || null;
       if (authUrl) {
         localStorage.setItem('last_order_reference', reference || '');
         window.location.href = authUrl;
