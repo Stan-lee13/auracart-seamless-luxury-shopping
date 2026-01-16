@@ -12,6 +12,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Admin whitelist - only these emails can access admin
+const ADMIN_EMAILS = [
+  'stanleyvic13@gmail.com',
+  'stanleyvic14@gmail.com',
+];
+
 const adminNavItems = [
   { path: '/admin/orders', label: 'Orders', icon: Package },
   { path: '/admin/refunds', label: 'Refunds', icon: RefreshCcw },
@@ -20,7 +26,7 @@ const adminNavItems = [
 ];
 
 export default function AdminLayout() {
-  const { isAdmin, isLoading } = useAuth();
+  const { isAdmin, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -30,8 +36,12 @@ export default function AdminLayout() {
     );
   }
 
-  if (!isAdmin) {
-    return <Navigate to="/auth" replace />;
+  // Check both role AND email whitelist
+  const isEmailAllowed = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
+  
+  if (!isAdmin || !isEmailAllowed) {
+    // Silently redirect non-admins to account page (not auth)
+    return <Navigate to="/account" replace />;
   }
 
   return (

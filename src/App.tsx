@@ -12,6 +12,7 @@ import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 import { SearchFiltersBar } from "@/components/search/SearchFiltersBar";
 import Landing from "./pages/Landing";
 import Shop from "./pages/Shop";
+import Categories from "./pages/Categories";
 import Product from "./pages/Product";
 import Cart from "./pages/Cart";
 import Auth from "./pages/Auth";
@@ -48,6 +49,25 @@ function AuthAwareRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Protected route - requires auth for checkout/orders
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <div className="flex flex-col min-h-screen">
@@ -63,23 +83,39 @@ function AppRoutes() {
             </AuthAwareRoute>
           } />
           
-          {/* Shop & Product Routes */}
+          {/* Shop & Product Routes - public browsing */}
           <Route path="/shop" element={<Shop />} />
+          <Route path="/categories" element={<Categories />} />
           <Route path="/product/:slug" element={<Product />} />
           <Route path="/cart" element={<Cart />} />
-          <Route path="/checkout" element={<Checkout />} />
-          <Route path="/categories" element={<Shop />} />
           <Route path="/search" element={<Shop />} />
           
           {/* Auth */}
           <Route path="/auth" element={<Auth />} />
           
-          {/* User Account & Orders */}
-          <Route path="/account" element={<Account />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/order/:id" element={<OrderDetail />} />
+          {/* Protected Routes - require login to buy */}
+          <Route path="/checkout" element={
+            <ProtectedRoute>
+              <Checkout />
+            </ProtectedRoute>
+          } />
+          <Route path="/orders" element={
+            <ProtectedRoute>
+              <Orders />
+            </ProtectedRoute>
+          } />
+          <Route path="/order/:id" element={
+            <ProtectedRoute>
+              <OrderDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/account" element={
+            <ProtectedRoute>
+              <Account />
+            </ProtectedRoute>
+          } />
           
-          {/* Admin Routes */}
+          {/* Admin Routes - protected by AdminLayout */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/orders" replace />} />
             <Route path="orders" element={<AdminOrders />} />
