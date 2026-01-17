@@ -11,6 +11,7 @@ serve(async (req: Request) => {
 
     const url = new URL(req.url);
     const state = url.searchParams.get("state");
+    // State should contain the original URL. Decode it once.
     const siteOrigin = state ? decodeURIComponent(state) : "http://localhost:5173";
     const redirectUrl = new URL(siteOrigin);
     redirectUrl.pathname = "/admin/suppliers";
@@ -20,24 +21,24 @@ serve(async (req: Request) => {
         const errorParam = url.searchParams.get("error");
 
         if (errorParam) throw new Error(`AliExpress Auth Error: ${errorParam}`);
-        if (!code) throw new Error("No authorization code returned from AliExpress");
+        if (!code) throw new Error("No authorization code (code) returned from AliExpress.");
 
         const supabaseClient = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        // 1. Get API Credentials from database (Preferred over ENV since user saves them in UI)
+        // Get saved config
         const { data: aliConfig } = await supabaseClient.from('settings').select('value').eq('key', 'aliexpress_config').maybeSingle();
 
         const appKey = (aliConfig?.value as any)?.app_key || Deno.env.get("ALIEXPRESS_APP_KEY");
         const appSecret = (aliConfig?.value as any)?.app_secret || Deno.env.get("ALIEXPRESS_APP_SECRET");
 
         if (!appKey || !appSecret) {
-            throw new Error("AliExpress App Key or Secret not found. Please save them in the Admin Panel first.");
+            throw new Error("AliExpress App Key or Secret not found in settings. Please save them first.");
         }
 
-        // 2. Exchange Code for Token
+        // Token Exchange
         const tokenUrl = "https://api-sg.aliexpress.com/rest/2.0/auth/token/create";
         const params = new URLSearchParams({
             code,
@@ -55,11 +56,12 @@ serve(async (req: Request) => {
         const tokenData = await tokenResponse.json();
 
         if (tokenData.error_response || tokenData.error) {
-            const errDetail = tokenData.error_response ? JSON.stringify(tokenData.error_response) : tokenData.error;
-            throw new Error(`Token Exchange Failed: ${errDetail}`);
+            const err = tokenData.error_response ? JSON.stringify(tokenData.error_response) : tokenData.error;
+            throw new Error(`AliExpress Token Exchange Failed: ${err}`);
         }
 
-        // 3. Save tokens to 'settings' table (Using a delete-then-insert approach to be absolutely sure we don't hit duplicate keys)
+        // Clean up and Save
+        console.log("Saving AliExpress tokens for account:", tokenData.account);
         await supabaseClient.from('settings').delete().eq('key', 'aliexpress_tokens');
 
         const { error: dbError } = await supabaseClient
@@ -74,19 +76,18 @@ serve(async (req: Request) => {
                     account: tokenData.account,
                     updated_at: new Date().toISOString()
                 },
-                description: 'Official AliExpress Dropshipping API Tokens'
+                description: `Connected to AliExpress Account: ${tokenData.account}`
             });
 
         if (dbError) throw dbError;
 
-        // 4. Success Redirect
-        redirectUrl.search = "status=connected&service=aliexpress";
+        redirectUrl.searchParams.set("status", "connected");
         return Response.redirect(redirectUrl.toString(), 302);
 
     } catch (err: any) {
-        console.error("AliExpress Auth Callback Error:", err);
-        // Instead of showing a JSON error, we redirect back to the app so the user stays in the mobile UI
-        redirectUrl.search = `status=error&error=${encodeURIComponent(err?.message || 'Unknown Error')}`;
+        console.error("Critical Auth Error:", err.message);
+        redirectUrl.searchParams.set("status", "error");
+        redirectUrl.searchParams.set("error", err.message);
         return Response.redirect(redirectUrl.toString(), 302);
     }
 });
