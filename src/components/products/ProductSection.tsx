@@ -1,10 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-<<<<<<< HEAD
 import { ChevronRight, Sparkles, Clock, Heart, Star } from 'lucide-react';
-=======
-import { ChevronRight, Sparkles, Clock, Heart } from 'lucide-react';
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 import { ProductCard } from './ProductCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Product } from '@/hooks/useProducts';
@@ -14,11 +10,7 @@ interface ProductSectionProps {
   subtitle?: string;
   products: Product[];
   isLoading?: boolean;
-<<<<<<< HEAD
   icon?: 'trending' | 'new' | 'recommended' | 'star';
-=======
-  icon?: 'trending' | 'new' | 'recommended';
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
   viewAllLink?: string;
   className?: string;
 }
@@ -27,10 +19,7 @@ const iconMap = {
   trending: Sparkles,
   new: Clock,
   recommended: Heart,
-<<<<<<< HEAD
   star: Star,
-=======
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 };
 
 export function ProductSection({
@@ -101,21 +90,14 @@ export function ProductSection({
           </Link>
         )}
       </div>
-<<<<<<< HEAD
 
-=======
-      
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {products.slice(0, 8).map((product, index) => (
-          <motion.div
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-8">
+        {products.map((product, index) => (
+          <ProductCard
             key={product.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.05 }}
-          >
-            <ProductCard product={product} />
-          </motion.div>
+            product={product}
+            className={`transition-delay-[${index * 100}ms]`}
+          />
         ))}
       </div>
     </motion.section>

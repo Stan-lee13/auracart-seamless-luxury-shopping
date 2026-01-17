@@ -1,11 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-<<<<<<< HEAD
 import { ChevronLeft, ChevronRight, Heart, Minus, Plus, ShoppingBag, Truck, Shield, RotateCcw, Image as ImageIcon } from 'lucide-react';
-=======
-import { ChevronLeft, ChevronRight, Heart, Minus, Plus, ShoppingBag, Truck, Shield, RotateCcw } from 'lucide-react';
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 import { useProduct, useProducts } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -61,11 +57,7 @@ export default function Product() {
     );
   }
 
-<<<<<<< HEAD
   const images = product.images?.length ? product.images : (product.thumbnail_url ? [product.thumbnail_url] : []);
-=======
-  const images = product.images?.length ? product.images : [product.thumbnail_url || '/placeholder.svg'];
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
   const currentVariant = product.variants?.find(v => v.id === selectedVariant);
   const displayPrice = currentVariant?.customer_price || product.customer_price;
   const inStock = (product.stock_quantity ?? 0) > 0;
@@ -77,11 +69,7 @@ export default function Product() {
       name: product.name,
       variantName: currentVariant?.name,
       price: displayPrice,
-<<<<<<< HEAD
       image: currentVariant?.image_url || images[0] || '',
-=======
-      image: currentVariant?.image_url || images[0],
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
       quantity,
     });
   };
@@ -106,26 +94,20 @@ export default function Product() {
             </>
           )}
           <span className="mx-2">/</span>
-          <span className="text-foreground">{product.name}</span>
+          <span className="text-foreground truncate max-w-[200px] inline-block align-bottom">{product.name}</span>
         </nav>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-          {/* Image Gallery */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            className="space-y-4"
-          >
-            <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-<<<<<<< HEAD
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+          {/* Product Images */}
+          <div className="space-y-4">
+            <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted group">
               {images.length > 0 ? (
                 <img
                   src={images[selectedImage]}
                   alt={product.name}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-muted">
@@ -133,223 +115,203 @@ export default function Product() {
                 </div>
               )}
 
-=======
-              <img
-                src={images[selectedImage]}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-              
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
               {images.length > 1 && (
                 <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background"
+                  <button
                     onClick={prevImage}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background"
+                  </button>
+                  <button
                     onClick={nextImage}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-sm p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <ChevronRight className="h-5 w-5" />
-                  </Button>
+                  </button>
                 </>
               )}
-
-              {/* Badges */}
-              <div className="absolute top-4 left-4 flex flex-col gap-2">
-                {product.is_featured && (
-                  <Badge>Featured</Badge>
-                )}
-                {!inStock && (
-                  <Badge variant="destructive">Sold Out</Badge>
-                )}
-              </div>
             </div>
 
-            {/* Thumbnails */}
             {images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
                 {images.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setSelectedImage(i)}
                     className={cn(
-                      'w-20 h-20 rounded-md overflow-hidden flex-shrink-0 border-2 transition-colors',
-                      selectedImage === i ? 'border-primary' : 'border-transparent'
+                      "relative w-24 h-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
+                      selectedImage === i ? "border-primary" : "border-transparent opacity-70"
                     )}
                   >
-                    <img src={img} alt="" className="h-full w-full object-cover" />
+                    <img src={img} alt="" className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
             )}
-          </motion.div>
+          </div>
 
           {/* Product Info */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="space-y-6"
-          >
-            {product.category && (
-              <Link
-                to={`/shop?category=${product.category.slug}`}
-                className="text-sm text-muted-foreground uppercase tracking-wide hover:text-primary"
-              >
-                {product.category.name}
-              </Link>
-            )}
+          <div className="flex flex-col">
+            <div className="mb-6">
+              <Badge variant="outline" className="mb-2">{product.category?.name || 'Shop'}</Badge>
+              <h1 className="font-serif text-3xl md:text-4xl font-bold mb-2">{product.name}</h1>
+              <div className="flex items-center gap-4">
+                <span className="text-2xl font-semibold text-primary">
+                  {formatCurrency(displayPrice)}
+                </span>
+                {inStock ? (
+                  <Badge variant="success" className="bg-green-100 text-green-800 border-green-200">In Stock</Badge>
+                ) : (
+                  <Badge variant="destructive">Out of Stock</Badge>
+                )}
+              </div>
+            </div>
 
-            <h1 className="font-serif text-3xl md:text-4xl font-bold">{product.name}</h1>
-
-            <p className="text-3xl font-semibold price-display">
-              {formatCurrency(displayPrice)}
-            </p>
-
-            <p className="text-muted-foreground leading-relaxed">
-              {product.short_description || product.description}
-            </p>
+            <div className="prose prose-sm max-w-none text-muted-foreground mb-8">
+              <p>{product.description}</p>
+            </div>
 
             {/* Variants */}
             {product.variants && product.variants.length > 0 && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium">Options</label>
+              <div className="space-y-4 mb-8">
+                <h3 className="font-medium">Options</h3>
                 <div className="flex flex-wrap gap-2">
-                  {product.variants.filter(v => v.is_active).map((variant) => (
-                    <Button
-                      key={variant.id}
-                      variant={selectedVariant === variant.id ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSelectedVariant(variant.id)}
+                  {product.variants.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setSelectedVariant(v.id)}
+                      className={cn(
+                        "px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all",
+                        selectedVariant === v.id
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border hover:border-muted-foreground/30"
+                      )}
                     >
-                      {variant.name}
-                    </Button>
+                      {v.name}
+                    </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Quantity */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Quantity</label>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="h-4 w-4" />
-                </Button>
-                <span className="w-12 text-center font-medium">{quantity}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setQuantity(quantity + 1)}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
             {/* Actions */}
-            <div className="flex gap-3">
-              <Button
-                size="lg"
-                className="flex-1 cta-glow btn-luxury"
-                onClick={handleAddToCart}
-                disabled={!inStock}
-              >
-                <ShoppingBag className="h-5 w-5 mr-2" />
-                {inStock ? 'Add to Cart' : 'Sold Out'}
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className={cn(isWishlisted && 'text-red-500')}
-                onClick={() => setIsWishlisted(!isWishlisted)}
-              >
-                <Heart className={cn('h-5 w-5', isWishlisted && 'fill-current')} />
-              </Button>
+            <div className="space-y-4 mb-10 pt-4 border-t border-border mt-auto">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center border border-border rounded-lg bg-muted/30">
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    className="p-3 hover:text-primary transition-colors border-r border-border"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="w-12 text-center font-medium">{quantity}</span>
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
+                    className="p-3 hover:text-primary transition-colors border-l border-border"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                <Button
+                  onClick={handleAddToCart}
+                  disabled={!inStock}
+                  className="flex-1 btn-luxury h-12 text-lg cta-glow"
+                >
+                  <ShoppingBag className="mr-2 h-5 w-5" />
+                  Add to Cart
+                </Button>
+                <button
+                  onClick={() => setIsWishlisted(!isWishlisted)}
+                  className={cn(
+                    "p-3 rounded-lg border border-border transition-all",
+                    isWishlisted ? "bg-red-50 text-red-500 border-red-100" : "hover:bg-muted"
+                  )}
+                >
+                  <Heart className={cn("h-6 w-6", isWishlisted && "fill-current")} />
+                </button>
+              </div>
             </div>
 
             {/* Trust Badges */}
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t">
-              <div className="text-center">
-                <Truck className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Free Shipping</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 py-6 border-t border-border">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="p-2 rounded-full bg-primary/5">
+                  <Truck className="h-4 w-4 text-primary" />
+                </div>
+                <span>Global Shipping</span>
               </div>
-              <div className="text-center">
-                <Shield className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Secure Payment</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="p-2 rounded-full bg-primary/5">
+                  <Shield className="h-4 w-4 text-primary" />
+                </div>
+                <span>Secure Checkout</span>
               </div>
-              <div className="text-center">
-                <RotateCcw className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Easy Returns</p>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="p-2 rounded-full bg-primary/5">
+                  <RotateCcw className="h-4 w-4 text-primary" />
+                </div>
+                <span>Easy Returns</span>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Product Details Tabs */}
         <div className="mt-16">
-          <Tabs defaultValue="description">
-            <TabsList className="w-full justify-start border-b rounded-none bg-transparent h-auto p-0">
+          <Tabs defaultValue="description" className="w-full">
+            <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 mb-8 space-x-8">
               <TabsTrigger
                 value="description"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
+                className="rounded-none border-b-2 border-transparent px-0 pb-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
                 Description
               </TabsTrigger>
               <TabsTrigger
-                value="features"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
+                value="details"
+                className="rounded-none border-b-2 border-transparent px-0 pb-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
-                Features
+                Specifications
               </TabsTrigger>
               <TabsTrigger
                 value="shipping"
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3"
+                className="rounded-none border-b-2 border-transparent px-0 pb-4 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
               >
-                Shipping
+                Shipping & Returns
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="description" className="mt-6">
-              <div className="prose dark:prose-invert max-w-none">
-                <p>{product.ai_description || product.description || 'No description available.'}</p>
+            <TabsContent value="description" className="prose prose-sm max-w-none text-muted-foreground pb-8">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Product Overview</h3>
+              <p>{product.description}</p>
+              <p>Experience the perfect blend of style and luxury with our {product.name}. Each piece is carefully curated to meet our high standards of quality and aura.</p>
+            </TabsContent>
+            <TabsContent value="details" className="pb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4">
+                {Object.entries(product.metadata || {}).map(([key, value]) => (
+                  <div key={key} className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground capitalize">{key.replace('_', ' ')}</span>
+                    <span className="font-medium">{String(value)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-muted-foreground">Brand</span>
+                  <span className="font-medium">AuraCart Premium</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-border">
+                  <span className="text-muted-foreground">Material</span>
+                  <span className="font-medium">High Quality Collection</span>
+                </div>
               </div>
             </TabsContent>
-            <TabsContent value="features" className="mt-6">
-              {product.ai_features && product.ai_features.length > 0 ? (
-                <ul className="space-y-2">
-                  {product.ai_features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <span className="text-primary">✓</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground">No features listed.</p>
-              )}
-            </TabsContent>
-            <TabsContent value="shipping" className="mt-6">
-              <div className="space-y-4">
-                <p>We offer worldwide shipping on all orders. Estimated delivery times:</p>
-                <ul className="space-y-2">
-                  <li>• Nigeria: 7-14 business days</li>
-                  <li>• Africa: 14-21 business days</li>
-                  <li>• International: 21-30 business days</li>
-                </ul>
-              </div>
+            <TabsContent value="shipping" className="prose prose-sm max-w-none text-muted-foreground pb-8">
+              <h3 className="text-lg font-semibold text-foreground mb-4">Fast & Reliable Shipping</h3>
+              <p>We offer worldwide shipping to ensure you can experience our products wherever you are. All orders are processed within 24-48 hours.</p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li>Free shipping on orders over ₦50,000</li>
+                <li>Standard international shipping: 7-14 business days</li>
+                <li>Express shipping available for selected regions</li>
+                <li>All packages are tracked and insured</li>
+              </ul>
             </TabsContent>
           </Tabs>
         </div>
@@ -357,8 +319,13 @@ export default function Product() {
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="mt-20">
-            <h2 className="font-serif text-2xl font-bold mb-8">You May Also Like</h2>
-            <ProductGrid products={relatedProducts.filter(p => p.id !== product.id).slice(0, 4)} />
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="font-serif text-2xl font-bold">You May Also Like</h2>
+              <Button variant="ghost" asChild>
+                <Link to="/shop">View All</Link>
+              </Button>
+            </div>
+            <ProductGrid products={relatedProducts} />
           </div>
         )}
       </div>

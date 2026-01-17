@@ -9,13 +9,19 @@ export type Product = Tables<'products'> & {
 
 const PAGE_SIZE = 20;
 
+interface InfiniteProductsResponse {
+  products: Product[];
+  nextPage: number | undefined;
+  totalCount: number;
+}
+
 export function useInfiniteProducts(options?: {
   categorySlug?: string;
   featured?: boolean;
   search?: string;
   sortBy?: 'newest' | 'price-asc' | 'price-desc' | 'name';
 }) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<InfiniteProductsResponse>({
     queryKey: ['products-infinite', options],
     queryFn: async ({ pageParam = 0 }) => {
       // Use !inner join when filtering by category to ensure we can filter by the joined table
@@ -36,7 +42,7 @@ export function useInfiniteProducts(options?: {
         .from('products')
         .select(selectQuery, { count: 'exact' })
         .eq('is_active', true)
-        .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
+        .range(Number(pageParam) * PAGE_SIZE, (Number(pageParam) + 1) * PAGE_SIZE - 1);
 
       // Apply sorting
       switch (options?.sortBy) {
@@ -71,19 +77,19 @@ export function useInfiniteProducts(options?: {
       if (error) throw error;
 
       return {
-        products: data as Product[],
-        nextPage: (data?.length || 0) === PAGE_SIZE ? pageParam + 1 : undefined,
+        products: (data || []) as Product[],
+        nextPage: (data?.length || 0) === PAGE_SIZE ? Number(pageParam) + 1 : undefined,
         totalCount: count || 0,
       };
     },
-    getNextPageParam: (lastPage: { nextPage: number | undefined }) => lastPage.nextPage,
+    getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 0,
   });
 }
 
 // Hook for fetching trending products (most viewed/purchased)
 export function useTrendingProducts(limit: number = 8) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<InfiniteProductsResponse>({
     queryKey: ['products-trending', limit],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -99,7 +105,7 @@ export function useTrendingProducts(limit: number = 8) {
         .limit(limit);
 
       if (error) throw error;
-      return { products: data as Product[], nextPage: undefined, totalCount: data?.length || 0 };
+      return { products: (data || []) as Product[], nextPage: undefined, totalCount: data?.length || 0 };
     },
     getNextPageParam: () => undefined,
     initialPageParam: 0,
@@ -108,7 +114,7 @@ export function useTrendingProducts(limit: number = 8) {
 
 // Hook for new arrivals
 export function useNewArrivals(limit: number = 8) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<InfiniteProductsResponse>({
     queryKey: ['products-new-arrivals', limit],
     queryFn: async () => {
       const thirtyDaysAgo = new Date();
@@ -127,7 +133,7 @@ export function useNewArrivals(limit: number = 8) {
         .limit(limit);
 
       if (error) throw error;
-      return { products: data as Product[], nextPage: undefined, totalCount: data?.length || 0 };
+      return { products: (data || []) as Product[], nextPage: undefined, totalCount: data?.length || 0 };
     },
     getNextPageParam: () => undefined,
     initialPageParam: 0,
@@ -140,7 +146,7 @@ export function useRecommendedProducts(
   excludeProductIds: string[] = [],
   limit: number = 8
 ) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<InfiniteProductsResponse>({
     queryKey: ['products-recommended', categoryIds, excludeProductIds, limit],
     queryFn: async () => {
       let query = supabase
@@ -165,10 +171,11 @@ export function useRecommendedProducts(
       const { data, error } = await query;
 
       if (error) throw error;
-      return { products: data as Product[], nextPage: undefined, totalCount: data?.length || 0 };
+      return { products: (data || []) as Product[], nextPage: undefined, totalCount: data?.length || 0 };
     },
     getNextPageParam: () => undefined,
     initialPageParam: 0,
     enabled: true,
   });
 }
+

@@ -1,25 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { RefreshCw, Truck, X, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, Truck, X, TrendingUp, TrendingDown, ExternalLink, Download, CheckCircle2, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import logger from '@/lib/logger';
 
-type Supplier = { 
-  id?: string; 
-  supplier_name?: string; 
-  sla_score?: number; 
-  sla_grade?: string; 
-  total_orders?: number; 
-  fulfillment_rate?: number; 
-  on_time_delivery_rate?: number; 
-  fulfilled_orders?: number; 
-  cancellation_rate?: number; 
-  return_rate?: number; 
-  dispute_count?: number; 
-  return_count?: number 
+type Supplier = {
+  id?: string;
+  supplier_name?: string;
+  sla_score?: number;
+  sla_grade?: string;
+  total_orders?: number;
+  fulfillment_rate?: number;
+  on_time_delivery_rate?: number;
+  fulfilled_orders?: number;
+  cancellation_rate?: number;
+  return_rate?: number;
+  dispute_count?: number;
+  return_count?: number
 };
 
 type SupplierOrder = {
@@ -41,20 +43,121 @@ export default function AdminSuppliers() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [supplierDetail, setSupplierDetail] = useState<SupplierDetail | null>(null);
 
+  // AliExpress Integration State
+  const [isAliConnected, setIsAliConnected] = useState<boolean | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [aliConfig, setAliConfig] = useState<{ appKey: string; appSecret: string }>({ appKey: '', appSecret: '' });
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
+
   useEffect(() => {
     fetchSuppliers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    checkAliConnection();
+    fetchAliConfig();
   }, [session]);
 
+  const fetchAliConfig = async () => {
+    try {
+      const { data } = await supabase.from('settings').select('value').eq('key', 'aliexpress_config').maybeSingle();
+      if (data?.value) {
+        setAliConfig({
+          appKey: (data.value as any).app_key || '',
+          appSecret: (data.value as any).app_secret || '',
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching Ali config:', err);
+    }
+  };
+
+  const handleSaveConfig = async () => {
+    if (!aliConfig.appKey || !aliConfig.appSecret) {
+      toast.error('App Key and Secret are required');
+      return;
+    }
+    setIsSavingConfig(true);
+    try {
+      const { error } = await supabase.from('settings').upsert({
+        key: 'aliexpress_config',
+        value: { app_key: aliConfig.appKey, app_secret: aliConfig.appSecret }
+      });
+      if (error) throw error;
+      toast.success('AliExpress credentials saved successfully!');
+    } catch (err) {
+      toast.error('Failed to save configuration');
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  const checkAliConnection = async () => {
+    try {
+      const { data } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'aliexpress_tokens')
+        .maybeSingle();
+
+      const val = data?.value as any;
+      if (val?.access_token) {
+        setIsAliConnected(true);
+      } else {
+        setIsAliConnected(false);
+      }
+    } catch (err) {
+      console.error('Error checking Ali connection:', err);
+      setIsAliConnected(false);
+    }
+  };
+
+  const handleConnectAliExpress = () => {
+    if (!aliConfig.appKey) {
+      toast.error('Please save your AliExpress App Key first.');
+      return;
+    }
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const redirectUri = `${supabaseUrl}/functions/v1/aliexpress-auth-callback`;
+
+    // Using standard Global AliExpress Auth URL
+    const authUrl = `https://oauth.aliexpress.com/authorize?response_type=code&client_id=${aliConfig.appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&view=web&sp=ae`;
+
+    window.open(authUrl, '_blank');
+  };
+
+  const handleImportProducts = async () => {
+    setIsImporting(true);
+    toast.info('Starting AliExpress product import...');
+
+    try {
+      const { error } = await supabase.functions.invoke('import-products', {
+        body: { limit: 20 }
+      });
+
+      if (error) throw error;
+      toast.success('Successfully imported real AliExpress products!');
+    } catch (err) {
+      console.error('Import error:', err);
+      toast.error('Failed to import products. Check edge function logs.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   async function fetchSuppliers() {
-    if (!session?.access_token) return;
     setLoading(true);
     try {
+      // Try to fetch from Node server first (for metrics)
       const res = await fetch('/api/admin/suppliers', {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${session?.access_token}` }
       });
-      const data = await res.json();
-      setSuppliers(data.data || []);
+
+      if (!res.ok) {
+        // Fallback to direct Supabase if Node server is down
+        const { data } = await supabase.from('supplier_metrics' as any).select('*').limit(50);
+        setSuppliers(data as Supplier[] || []);
+      } else {
+        const data = await res.json();
+        setSuppliers(data.data || []);
+      }
     } catch (e) {
       logger.error('Failed to fetch suppliers', e);
     } finally {
@@ -63,11 +166,10 @@ export default function AdminSuppliers() {
   }
 
   async function selectSupplier(supplier: Supplier) {
-    if (!session?.access_token) return;
     setSelectedSupplier(supplier);
     try {
       const res = await fetch(`/api/admin/suppliers/${encodeURIComponent(supplier.supplier_name || '')}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` }
+        headers: { Authorization: `Bearer ${session?.access_token}` }
       });
       const data = await res.json();
       setSupplierDetail(data);
@@ -92,8 +194,10 @@ export default function AdminSuppliers() {
     return `${Math.round(value * 100)}%`;
   };
 
+  const currentRedirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aliexpress-auth-callback`;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -102,23 +206,149 @@ export default function AdminSuppliers() {
             Supplier Management
           </h2>
           <p className="text-muted-foreground mt-1">
-            Monitor supplier performance and SLA scores
+            Monitor supplier performance and AliExpress integration
           </p>
         </div>
-        <Button onClick={fetchSuppliers} disabled={loading} className="btn-luxury">
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Loading...' : 'Refresh'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={fetchSuppliers} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh Data
+          </Button>
+        </div>
+      </div>
+
+      {/* AliExpress Integration Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="glass-card border-primary/20 bg-primary/5">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">AliExpress Connection</CardTitle>
+                <CardDescription>Authorize Auracart to access AliExpress API</CardDescription>
+              </div>
+              <div className="h-10 w-10 rounded-full bg-white/50 flex items-center justify-center overflow-hidden">
+                <img src="/lovable-uploads/c7b64081-3069-450f-90e9-b690d5656910.png" alt="AliExpress" className="h-8 w-8 object-contain" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 bg-white/40 rounded-xl border border-white/60 mb-4">
+              <div className="flex items-center gap-3">
+                {isAliConnected ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-amber-500" />
+                )}
+                <div>
+                  <p className="font-medium text-sm">Status</p>
+                  <p className="text-xs text-muted-foreground">
+                    {isAliConnected ? 'Connected & Optimized' : 'Not Connected'}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className={isAliConnected ? "bg-green-100 text-green-800 border-green-200" : "bg-amber-100 text-amber-800 border-amber-200"}>
+                {isAliConnected ? 'ACTIVE' : 'INACTIVE'}
+              </Badge>
+            </div>
+
+            <div className="space-y-4">
+              <Button
+                onClick={handleConnectAliExpress}
+                className="w-full btn-luxury"
+                variant={isAliConnected ? "outline" : "default"}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {isAliConnected ? 'Reconnect Account' : 'Connect AliExpress'}
+              </Button>
+
+              <div className="p-3 bg-muted/30 rounded-lg text-[10px] font-mono break-all border border-border">
+                <p className="text-muted-foreground mb-1 uppercase tracking-tighter">Redirect URI (Save this in AliExpress Console):</p>
+                <p className="select-all">{currentRedirectUri}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-lg">API Configuration</CardTitle>
+            <CardDescription>Enter your Application Keys</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2 text-sm">
+              <label className="font-medium block">App Key (client_id)</label>
+              <input
+                type="text"
+                value={aliConfig.appKey}
+                onChange={(e) => setAliConfig(prev => ({ ...prev, appKey: e.target.value }))}
+                placeholder="AliExpress App Key"
+                className="w-full p-2 rounded-md border border-input bg-background text-foreground text-sm"
+              />
+            </div>
+            <div className="space-y-2 text-sm">
+              <label className="font-medium block">App Secret (client_secret)</label>
+              <input
+                type="password"
+                value={aliConfig.appSecret}
+                onChange={(e) => setAliConfig(prev => ({ ...prev, appSecret: e.target.value }))}
+                placeholder="AliExpress App Secret"
+                className="w-full p-2 rounded-md border border-input bg-background text-foreground text-sm"
+              />
+            </div>
+            <Button onClick={handleSaveConfig} disabled={isSavingConfig} className="w-full" variant="outline">
+              {isSavingConfig ? 'Saving...' : 'Save Configuration'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="glass-card border-accent/20 bg-accent/5">
+          <CardHeader>
+            <CardTitle className="text-lg">Global Catalog</CardTitle>
+            <CardDescription>Synchronize real products</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 bg-white/40 rounded-xl border border-white/60 mb-4 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span>Sync Priority</span>
+                <span className="font-medium">High</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span>Auto-Optimization</span>
+                <span className="font-medium text-green-600">Enabled</span>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleImportProducts}
+              disabled={!isAliConnected || isImporting}
+              className="w-full"
+              variant="secondary"
+            >
+              {isImporting ? (
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4 mr-2" />
+              )}
+              {isImporting ? 'Importing...' : 'Sync Catalog'}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Suppliers Table */}
       <Card className="glass-card">
         <CardHeader>
-          <CardTitle>Suppliers & Performance</CardTitle>
+          <CardTitle>Supplier Performance (SLA)</CardTitle>
         </CardHeader>
         <CardContent>
           {suppliers.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No suppliers to display</p>
+            <div className="text-center py-12">
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <Truck className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground">No supplier metrics available yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Connect AliExpress to start tracking performance</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -130,12 +360,12 @@ export default function AdminSuppliers() {
                     <TableHead>Orders</TableHead>
                     <TableHead>Fulfillment</TableHead>
                     <TableHead>On-Time</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {suppliers.map((supplier) => (
-                    <TableRow key={supplier.id} className="hover:bg-muted/50">
+                    <TableRow key={supplier.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => selectSupplier(supplier)}>
                       <TableCell className="font-semibold">
                         {supplier.supplier_name}
                       </TableCell>
@@ -144,19 +374,18 @@ export default function AdminSuppliers() {
                       </TableCell>
                       <TableCell>
                         <Badge className={getGradeColor(supplier.sla_grade)}>
-                          {supplier.sla_grade}
+                          Grade {supplier.sla_grade}
                         </Badge>
                       </TableCell>
                       <TableCell>{supplier.total_orders}</TableCell>
                       <TableCell>{formatPercent(supplier.fulfillment_rate)}</TableCell>
                       <TableCell>{formatPercent(supplier.on_time_delivery_rate)}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-right">
                         <Button
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
-                          onClick={() => selectSupplier(supplier)}
                         >
-                          View
+                          Details
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -170,103 +399,67 @@ export default function AdminSuppliers() {
 
       {/* Supplier Details */}
       {selectedSupplier && supplierDetail && (
-        <Card className="glass-card border-primary/20">
+        <Card className="glass-card border-primary/20 animate-in fade-in slide-in-from-bottom-4 duration-300">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>{selectedSupplier.supplier_name} - Performance</CardTitle>
-            <Button 
-              variant="ghost" 
+            <div>
+              <CardTitle>{selectedSupplier.supplier_name}</CardTitle>
+              <CardDescription>Detailed fulfillment performance analysis</CardDescription>
+            </div>
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => setSelectedSupplier(null)}
-              aria-label="Close details"
             >
               <X className="h-4 w-4" />
             </Button>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="glass-card p-4 text-center">
-                <p className="text-sm text-muted-foreground">SLA Score</p>
-                <p className="text-3xl font-bold text-primary">{selectedSupplier.sla_score}%</p>
-                <Badge className={getGradeColor(selectedSupplier.sla_grade)}>
-                  Grade {selectedSupplier.sla_grade}
-                </Badge>
+              <div className="bg-white/40 p-4 rounded-xl border border-white/60 text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Fulfillment</p>
+                <p className="text-2xl font-bold">{formatPercent(selectedSupplier.fulfillment_rate)}</p>
               </div>
-              <div className="glass-card p-4 text-center">
-                <p className="text-sm text-muted-foreground">Total Orders</p>
-                <p className="text-3xl font-bold">{selectedSupplier.total_orders}</p>
-                <p className="text-sm text-muted-foreground">
-                  {selectedSupplier.fulfilled_orders} fulfilled
-                </p>
+              <div className="bg-white/40 p-4 rounded-xl border border-white/60 text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">On-Time</p>
+                <p className="text-2xl font-bold">{formatPercent(selectedSupplier.on_time_delivery_rate)}</p>
               </div>
-              <div className="glass-card p-4 text-center">
-                <p className="text-sm text-muted-foreground">Fulfillment Rate</p>
-                <p className="text-3xl font-bold flex items-center justify-center gap-1">
-                  {formatPercent(selectedSupplier.fulfillment_rate)}
-                  {(selectedSupplier.fulfillment_rate || 0) >= 0.9 
-                    ? <TrendingUp className="h-5 w-5 text-green-500" />
-                    : <TrendingDown className="h-5 w-5 text-red-500" />
-                  }
-                </p>
+              <div className="bg-white/40 p-4 rounded-xl border border-white/60 text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Cancellation</p>
+                <p className="text-2xl font-bold">{formatPercent(selectedSupplier.cancellation_rate)}</p>
               </div>
-              <div className="glass-card p-4 text-center">
-                <p className="text-sm text-muted-foreground">On-Time Delivery</p>
-                <p className="text-3xl font-bold flex items-center justify-center gap-1">
-                  {formatPercent(selectedSupplier.on_time_delivery_rate)}
-                  {(selectedSupplier.on_time_delivery_rate || 0) >= 0.9 
-                    ? <TrendingUp className="h-5 w-5 text-green-500" />
-                    : <TrendingDown className="h-5 w-5 text-red-500" />
-                  }
-                </p>
+              <div className="bg-white/40 p-4 rounded-xl border border-white/60 text-center">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Returns</p>
+                <p className="text-2xl font-bold">{formatPercent(selectedSupplier.return_rate)}</p>
               </div>
             </div>
 
-            {/* Additional Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="p-3 border border-border rounded-lg">
-                <p className="text-sm text-muted-foreground">Cancellation Rate</p>
-                <p className="text-xl font-semibold">{formatPercent(selectedSupplier.cancellation_rate)}</p>
-              </div>
-              <div className="p-3 border border-border rounded-lg">
-                <p className="text-sm text-muted-foreground">Return Rate</p>
-                <p className="text-xl font-semibold">{formatPercent(selectedSupplier.return_rate)}</p>
-              </div>
-              <div className="p-3 border border-border rounded-lg">
-                <p className="text-sm text-muted-foreground">Disputes</p>
-                <p className="text-xl font-semibold">{selectedSupplier.dispute_count}</p>
-              </div>
-              <div className="p-3 border border-border rounded-lg">
-                <p className="text-sm text-muted-foreground">Returns</p>
-                <p className="text-xl font-semibold">{selectedSupplier.return_count}</p>
-              </div>
-            </div>
-
-            {/* Recent Orders */}
             {supplierDetail.orders && supplierDetail.orders.length > 0 && (
-              <div className="border-t border-border pt-6">
-                <h3 className="font-semibold mb-4">Recent Orders</h3>
-                <div className="overflow-x-auto">
+              <div className="pt-4">
+                <h3 className="text-sm font-semibold mb-3">Recent Traceable Orders</h3>
+                <div className="overflow-x-auto rounded-lg border border-border">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead>AuraCart Order</TableHead>
+                        <TableHead>Order ID</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Created</TableHead>
+                        <TableHead>Qty</TableHead>
+                        <TableHead>Date</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {supplierDetail.orders.slice(0, 10).map((order) => (
+                      {supplierDetail.orders.slice(0, 5).map((order) => (
                         <TableRow key={order.id}>
-                          <TableCell className="font-mono text-sm">
-                            {order.aura_order_id?.slice(0, 8)}...
+                          <TableCell className="font-mono text-xs">
+                            {order.aura_order_id?.slice(0, 8)}
                           </TableCell>
-                          <TableCell>{order.status}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] h-5 uppercase">
+                              {order.status}
+                            </Badge>
+                          </TableCell>
                           <TableCell>{order.quantity}</TableCell>
-                          <TableCell className="text-muted-foreground text-sm">
-                            {order.created_at 
-                              ? new Date(order.created_at).toLocaleDateString() 
-                              : '-'}
+                          <TableCell className="text-muted-foreground text-xs">
+                            {order.created_at ? new Date(order.created_at).toLocaleDateString() : '-'}
                           </TableCell>
                         </TableRow>
                       ))}

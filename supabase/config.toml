@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-project_id = "mnuppunshelyjezumqtr"
-=======
 project_id = "mnuppunshelyjezumqtr"
 
 [functions.create-charge]
@@ -14,4 +11,3 @@ verify_jwt = false
 
 [functions.paystack-webhook]
 verify_jwt = false
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
