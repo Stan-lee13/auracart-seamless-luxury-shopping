@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # AliExpress Product Sync Service
+  # Runs continuously, syncing new products every 30 minutes
+  product-sync:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: auracart-product-sync
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - ALIEXPRESS_API_KEY=${ALIEXPRESS_API_KEY}
+      - ALIEXPRESS_API_SECRET=${ALIEXPRESS_API_SECRET}
+      - SYNC_INTERVAL=1800000  # 30 minutes in milliseconds
+      - LOG_LEVEL=info
+    restart: always
+    networks:
+      - auracart
+    command: node server/aliexpress_product_sync_worker.mjs
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('os').uptime()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # Optional: Webhook service for Paystack
+  # webhook:
+  #   build:
+  #     context: .
+  #     dockerfile: server/Dockerfile
+  #   container_name: auracart-webhook
+  #   ports:
+  #     - '8787:8787'
+  #   environment:
+  #     - SUPABASE_URL=${SUPABASE_URL}
+  #     - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+  #     - PAYSTACK_SECRET=${PAYSTACK_SECRET}
+  #   restart: always
+  #   networks:
+  #     - auracart
+  #   command: node server/paystack-webhook.mjs
+
+networks:
+  auracart:
+    driver: bridge
