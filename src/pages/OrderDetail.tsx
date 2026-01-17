@@ -5,25 +5,25 @@ import { BackButton } from '@/components/navigation/BackButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Package, Truck, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { ArrowLeft, Clock, Package, Truck, CheckCircle2, AlertCircle, ImageIcon, Loader2 } from 'lucide-react';
 
-type Item = { 
-  id?: string; 
-  product_name?: string; 
-  variant_name?: string; 
-  quantity?: number | string; 
-  unit_price?: number | string; 
+type Item = {
+  id?: string;
+  product_name?: string;
+  variant_name?: string;
+  quantity?: number | string;
+  unit_price?: number | string;
   line_total?: number | string;
   product_image?: string;
 };
 
-type Order = { 
-  order_number?: string; 
-  subtotal?: number | string; 
-  tax_total?: number | string; 
-  shipping_total?: number | string; 
-  discount_total?: number | string; 
-  grand_total?: number | string; 
+type Order = {
+  order_number?: string;
+  subtotal?: number | string;
+  tax_total?: number | string;
+  shipping_total?: number | string;
+  discount_total?: number | string;
+  grand_total?: number | string;
   status?: string;
   created_at?: string;
   shipping_address?: {
@@ -35,7 +35,7 @@ type Order = {
   };
 };
 
-type Tx = { 
+type Tx = {
   status?: string;
   payment_method?: string;
   created_at?: string;
@@ -59,7 +59,7 @@ export default function OrderDetail() {
           headers.Authorization = `Bearer ${session.access_token}`;
         }
         const res = await fetch(
-          `/api/confirm?reference=${encodeURIComponent(ref)}`, 
+          `/api/confirm?reference=${encodeURIComponent(ref)}`,
           { headers }
         );
         const j = await res.json();
@@ -139,12 +139,12 @@ export default function OrderDetail() {
           <div>
             <h1 className="text-3xl font-semibold">Order #{order.order_number}</h1>
             <p className="text-muted-foreground mt-1">
-              Placed on {order.created_at 
+              Placed on {order.created_at
                 ? new Date(order.created_at).toLocaleDateString('en-NG', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })
                 : '-'}
             </p>
           </div>
@@ -168,11 +168,17 @@ export default function OrderDetail() {
               <div className="space-y-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4 pb-4 border-b border-border last:border-0 last:pb-0">
-                    <img
-                      src={item.product_image || '/placeholder.svg'}
-                      alt={item.product_name}
-                      className="w-20 h-20 object-cover rounded-lg"
-                    />
+                    <div className="w-20 h-20 bg-muted flex items-center justify-center rounded-lg overflow-hidden flex-shrink-0">
+                      {item.product_image ? (
+                        <img
+                          src={item.product_image}
+                          alt={item.product_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="h-6 w-6 text-muted-foreground opacity-20" />
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium">{item.product_name}</p>
                       {item.variant_name && (

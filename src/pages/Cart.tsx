@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Minus, Plus, ShoppingBag, Trash2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, Trash2, ArrowRight, ArrowLeft, ImageIcon } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -61,11 +61,17 @@ export default function Cart() {
               >
                 <Link to={`/product/${item.productId}`} className="flex-shrink-0">
                   <div className="h-24 w-24 md:h-32 md:w-32 rounded-md overflow-hidden bg-background">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
+                    <div className="h-full w-full bg-muted flex items-center justify-center">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <ImageIcon className="h-8 w-8 text-muted-foreground opacity-20" />
+                      )}
+                    </div>
                   </div>
                 </Link>
 
