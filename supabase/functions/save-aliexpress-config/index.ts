@@ -25,11 +25,15 @@ serve(async (req: Request) => {
         const ADMIN_EMAILS = ['stanleyvic13@gmail.com', 'stanleyvic14@gmail.com'];
         const isWhitelisted = ADMIN_EMAILS.includes(user.email?.toLowerCase() || "");
 
-        // Check role too
-        const { data: roleData } = await supabaseClient.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
-
-        if (!isWhitelisted && !roleData) {
-            throw new Error("Unauthorized: Admin access required.");
+        if (isWhitelisted) {
+            // If email is in whitelist, we proceed immediately
+            console.log(`User ${user.email} is in whitelist. Proceeding.`);
+        } else {
+            // Otherwise check database role
+            const { data: roleData } = await supabaseClient.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+            if (!roleData) {
+                throw new Error("Unauthorized: Admin access required.");
+            }
         }
 
         const { appKey, appSecret } = await req.json();
