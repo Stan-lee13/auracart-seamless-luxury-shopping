@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { User, Package, MapPin, Heart, Settings, LogOut, ChevronRight } from 'lucide-react';
@@ -15,8 +15,16 @@ export default function Account() {
   const { user, profile, signOut, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [isUpdating, setIsUpdating] = useState(false);
-  const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [phone, setPhone] = useState(profile?.phone || '');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+
+  // Update local state when profile data is loaded/changed
+  React.useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setPhone(profile.phone || '');
+    }
+  }, [profile]);
 
   if (!user) {
     navigate('/auth');
@@ -78,21 +86,21 @@ export default function Account() {
           </div>
         </motion.div>
 
-        <Tabs defaultValue="profile" className="space-y-8">
-          <TabsList className="bg-muted/50 p-1">
-            <TabsTrigger value="profile" className="gap-2">
+        <Tabs defaultValue="profile" className="space-y-6 md:space-y-8">
+          <TabsList className="bg-muted/50 p-1 w-full flex overflow-x-auto no-scrollbar justify-start md:justify-center h-auto">
+            <TabsTrigger value="profile" className="gap-2 flex-shrink-0 py-2 px-4">
               <User className="h-4 w-4" />
               Profile
             </TabsTrigger>
-            <TabsTrigger value="orders" className="gap-2">
+            <TabsTrigger value="orders" className="gap-2 flex-shrink-0 py-2 px-4">
               <Package className="h-4 w-4" />
               Orders
             </TabsTrigger>
-            <TabsTrigger value="addresses" className="gap-2">
+            <TabsTrigger value="addresses" className="gap-2 flex-shrink-0 py-2 px-4">
               <MapPin className="h-4 w-4" />
               Addresses
             </TabsTrigger>
-            <TabsTrigger value="wishlist" className="gap-2">
+            <TabsTrigger value="wishlist" className="gap-2 flex-shrink-0 py-2 px-4">
               <Heart className="h-4 w-4" />
               Wishlist
             </TabsTrigger>
