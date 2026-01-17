@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('id', userId)
         .maybeSingle();
-      
+
       if (!error && data) {
         setProfile(data);
       }
@@ -47,7 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         // Defer role check with setTimeout to avoid deadlock
         if (session?.user) {
           setTimeout(() => {
@@ -62,12 +62,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAdminRole(session.user.id);
-        fetchProfile(session.user.id);
+        await Promise.all([
+          checkAdminRole(session.user.id),
+          fetchProfile(session.user.id)
+        ]);
       }
       setIsLoading(false);
     });
@@ -83,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('user_id', userId)
         .eq('role', 'admin')
         .maybeSingle();
-      
+
       if (!error && data) {
         setIsAdmin(true);
       } else {
@@ -96,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -107,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       },
     });
-    
+
     return { error: error as Error | null };
   };
 
@@ -116,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
     });
-    
+
     return { error: error as Error | null };
   };
 

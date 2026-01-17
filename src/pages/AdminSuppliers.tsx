@@ -139,6 +139,16 @@ export default function AdminSuppliers() {
     fetchSuppliers();
     checkAliConnection();
     fetchAliConfig();
+
+    // Check URL parameters for status
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('status') === 'connected') {
+      toast.success('AliExpress account connected successfully!');
+      // Instantly re-check to confirm DB has been updated
+      checkAliConnection();
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, [fetchSuppliers, checkAliConnection, fetchAliConfig]);
 
   const handleConnectAliExpress = () => {
@@ -153,7 +163,8 @@ export default function AdminSuppliers() {
     const state = encodeURIComponent(window.location.origin);
     const authUrl = `https://api-sg.aliexpress.com/oauth/authorize?response_type=code&client_id=${aliConfig.appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&view=web&sp=ae&state=${state}`;
 
-    window.open(authUrl, '_blank');
+    // Use same-tab redirect for better state management on mobile/tablets
+    window.location.href = authUrl;
   };
 
   const handleImportProducts = async () => {
