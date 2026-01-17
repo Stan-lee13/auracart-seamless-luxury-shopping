@@ -26,8 +26,9 @@ serve(async (req: Request) => {
         const isWhitelisted = ADMIN_EMAILS.includes(user.email?.toLowerCase() || "");
 
         if (isWhitelisted) {
-            // If email is in whitelist, we proceed immediately
-            console.log(`User ${user.email} is in whitelist. Proceeding.`);
+            // Self-healing: Ensure whitelisted users actually have the admin role in the DB
+            console.log(`User ${user.email} is in whitelist. Ensuring admin role exists.`);
+            await supabaseClient.from('user_roles').upsert({ user_id: user.id, role: 'admin' }, { onConflict: 'user_id,role' });
         } else {
             // Otherwise check database role
             const { data: roleData } = await supabaseClient.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
@@ -49,7 +50,7 @@ serve(async (req: Request) => {
                 key: 'aliexpress_config',
                 value: { app_key: appKey, app_secret: appSecret },
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: 'key' });
 
         if (upsertError) throw upsertError;
 
@@ -57,9 +58,14 @@ serve(async (req: Request) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
 
-    } catch (err: any) {
-        console.error("Save Ali Config Error:", err);
-        return new Response(JSON.stringify({ error: err.message }), {
+    } catch (err: unknown) {
+        const error = err as Error;
+        console.error("Save Ali Config Error:", error);
+        return new Response(JSON.stringify({
+            error: error.message,
+            stack: error.stack,
+            context: "save-aliexpress-config"
+        }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 400
         });

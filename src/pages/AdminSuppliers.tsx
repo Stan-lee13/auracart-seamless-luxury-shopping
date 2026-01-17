@@ -52,11 +52,11 @@ export default function AdminSuppliers() {
   const fetchAliConfig = React.useCallback(async () => {
     try {
       const { data } = await supabase.from('settings').select('value').eq('key', 'aliexpress_config').maybeSingle();
-      if (data?.value && typeof data.value === 'object') {
-        const value = data.value as Record<string, any>;
+      if (data?.value && typeof data.value === 'object' && !Array.isArray(data.value)) {
+        const value = data.value as Record<string, unknown>;
         setAliConfig({
-          appKey: value.app_key || '',
-          appSecret: value.app_secret || '',
+          appKey: typeof value.app_key === 'string' ? value.app_key : '',
+          appSecret: typeof value.app_secret === 'string' ? value.app_secret : '',
         });
       }
     } catch (err) {
@@ -75,13 +75,16 @@ export default function AdminSuppliers() {
         body: { appKey: aliConfig.appKey, appSecret: aliConfig.appSecret }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge Function error object:', error);
+        throw error;
+      }
       if (data?.error) throw new Error(data.error);
 
       toast.success('AliExpress credentials saved successfully!');
     } catch (err: unknown) {
+      console.error('Full Save config error:', err);
       const message = err instanceof Error ? err.message : 'Failed to save configuration';
-      console.error('Save config error:', err);
       toast.error(message);
     } finally {
       setIsSavingConfig(false);
@@ -96,8 +99,8 @@ export default function AdminSuppliers() {
         .eq('key', 'aliexpress_tokens')
         .maybeSingle();
 
-      const val = data?.value as Record<string, any> | null;
-      if (val?.access_token) {
+      const val = data?.value as Record<string, unknown> | null;
+      if (val && typeof val.access_token === 'string') {
         setIsAliConnected(true);
       } else {
         setIsAliConnected(false);
@@ -118,8 +121,9 @@ export default function AdminSuppliers() {
 
       if (!res.ok) {
         // Fallback to direct Supabase if Node server is down
-        const { data } = await supabase.from('supplier_metrics').select('*').limit(50);
-        setSuppliers(data as Supplier[] || []);
+        const { data: metricsData } = await (supabase.from('supplier_metrics' as unknown as 'suppliers')
+          .select('*').limit(50));
+        setSuppliers(metricsData as Supplier[] || []);
       } else {
         const data = await res.json();
         setSuppliers(data.data || []);
