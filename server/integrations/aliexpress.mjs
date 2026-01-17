@@ -10,7 +10,11 @@
  * Requires ALIEXPRESS_API_KEY and ALIEXPRESS_API_SECRET environment variables
  */
 
+<<<<<<< HEAD
 import logger from '../logger.mjs';
+=======
+import logger from './logger.mjs';
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 
 const ALIEXPRESS_API_KEY = process.env.ALIEXPRESS_API_KEY;
 const ALIEXPRESS_API_SECRET = process.env.ALIEXPRESS_API_SECRET;

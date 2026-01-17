@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { Link } from 'react-router-dom';
 import { ArrowRight, Sparkles, Truck, Shield, HeadphonesIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -103,3 +104,7 @@ export default function Index() {
     </div>
   );
 }
+=======
+// Re-export Landing page as Index for backwards compatibility
+export { default } from './Landing';
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698

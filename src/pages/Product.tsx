@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+<<<<<<< HEAD
 import { ChevronLeft, ChevronRight, Heart, Minus, Plus, ShoppingBag, Truck, Shield, RotateCcw, Image as ImageIcon } from 'lucide-react';
+=======
+import { ChevronLeft, ChevronRight, Heart, Minus, Plus, ShoppingBag, Truck, Shield, RotateCcw } from 'lucide-react';
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 import { useProduct, useProducts } from '@/hooks/useProducts';
 import { useCart } from '@/contexts/CartContext';
 import { formatCurrency, cn } from '@/lib/utils';
@@ -57,7 +61,11 @@ export default function Product() {
     );
   }
 
+<<<<<<< HEAD
   const images = product.images?.length ? product.images : (product.thumbnail_url ? [product.thumbnail_url] : []);
+=======
+  const images = product.images?.length ? product.images : [product.thumbnail_url || '/placeholder.svg'];
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
   const currentVariant = product.variants?.find(v => v.id === selectedVariant);
   const displayPrice = currentVariant?.customer_price || product.customer_price;
   const inStock = (product.stock_quantity ?? 0) > 0;
@@ -69,7 +77,11 @@ export default function Product() {
       name: product.name,
       variantName: currentVariant?.name,
       price: displayPrice,
+<<<<<<< HEAD
       image: currentVariant?.image_url || images[0] || '',
+=======
+      image: currentVariant?.image_url || images[0],
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
       quantity,
     });
   };
@@ -108,6 +120,7 @@ export default function Product() {
             className="space-y-4"
           >
             <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+<<<<<<< HEAD
               {images.length > 0 ? (
                 <img
                   src={images[selectedImage]}
@@ -120,6 +133,14 @@ export default function Product() {
                 </div>
               )}
 
+=======
+              <img
+                src={images[selectedImage]}
+                alt={product.name}
+                className="h-full w-full object-cover"
+              />
+              
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
               {images.length > 1 && (
                 <>
                   <Button

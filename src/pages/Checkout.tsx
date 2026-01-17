@@ -8,7 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+<<<<<<< HEAD
 import { ShieldCheck, CreditCard, Package, Loader2, Image as ImageIcon } from 'lucide-react';
+=======
+import { ShieldCheck, CreditCard, Package, Loader2 } from 'lucide-react';
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -71,6 +75,7 @@ export default function Checkout() {
         }))
       };
 
+<<<<<<< HEAD
       const res = await fetch('/api/create-charge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -89,6 +94,26 @@ export default function Checkout() {
         || null;
       const reference = json?.order?.order_number
         || json?.init?.data?.reference
+=======
+      // Call edge function
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: resData, error: fnError } = await supabase.functions.invoke('create-charge', {
+        body: payload,
+      });
+
+      if (fnError) {
+        throw new Error(fnError.message || 'Payment initialization failed');
+      }
+
+      const json = resData;
+
+      const authUrl = json?.init?.data?.authorization_url 
+        || json?.init?.authorization_url 
+        || json?.authorization_url 
+        || null;
+      const reference = json?.order?.order_number 
+        || json?.init?.data?.reference 
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
         || null;
 
       if (authUrl) {
@@ -132,7 +157,11 @@ export default function Checkout() {
   return (
     <div className="container-luxury py-8">
       <BackButton />
+<<<<<<< HEAD
 
+=======
+      
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
       <h1 className="text-3xl font-semibold mt-6 mb-8">Checkout</h1>
 
       <form onSubmit={handleSubmit}>
@@ -241,6 +270,7 @@ export default function Checkout() {
                 <div className="space-y-3 max-h-64 overflow-y-auto">
                   {cart.items.map((item) => (
                     <div key={item.id} className="flex gap-3">
+<<<<<<< HEAD
                       {item.image ? (
                         <img
                           src={item.image}
@@ -252,6 +282,13 @@ export default function Checkout() {
                           <ImageIcon className="h-6 w-6 text-muted-foreground/20" />
                         </div>
                       )}
+=======
+                      <img
+                        src={item.image || '/placeholder.svg'}
+                        alt={item.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{item.name}</p>
                         {item.variantName && (
@@ -300,9 +337,15 @@ export default function Checkout() {
                   </p>
                 )}
 
+<<<<<<< HEAD
                 <Button
                   type="submit"
                   className="w-full btn-luxury cta-glow"
+=======
+                <Button 
+                  type="submit" 
+                  className="w-full btn-luxury cta-glow" 
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
                   size="lg"
                   disabled={loading}
                 >

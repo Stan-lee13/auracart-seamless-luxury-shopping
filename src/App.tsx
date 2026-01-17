@@ -10,7 +10,11 @@ import { Navbar } from "@/components/layout/Navbar";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 import { SearchFiltersBar } from "@/components/search/SearchFiltersBar";
+<<<<<<< HEAD
 import Landing from "./pages/Landing";
+=======
+import LandingPage from "./pages/Landing";
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 import Shop from "./pages/Shop";
 import Categories from "./pages/Categories";
 import Product from "./pages/Product";
@@ -79,7 +83,11 @@ function AppRoutes() {
           {/* Landing page - only for logged-out users */}
           <Route path="/" element={
             <AuthAwareRoute>
+<<<<<<< HEAD
               <Landing />
+=======
+              <LandingPage />
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
             </AuthAwareRoute>
           } />
           

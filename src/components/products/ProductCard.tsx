@@ -25,12 +25,20 @@ export function ProductCard({ product, className }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
     if (!user) {
       navigate('/auth?redirect=' + encodeURIComponent(`/product/${product.slug}`));
       return;
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
     addItem({
       productId: product.id,
       name: product.name,
@@ -38,19 +46,31 @@ export function ProductCard({ product, className }: ProductCardProps) {
       image: product.thumbnail_url || product.images?.[0] || '/placeholder.svg',
       quantity: 1,
     });
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
     trackCartAddition(product.id, product.category_id || undefined);
   };
 
   const handleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
     if (!user) {
       navigate('/auth');
       return;
     }
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
     setIsWishlisted(!isWishlisted);
   };
 
@@ -72,6 +92,7 @@ export function ProductCard({ product, className }: ProductCardProps) {
       <Link to={`/product/${product.slug}`} className="block">
         {/* Image Container */}
         <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-muted">
+<<<<<<< HEAD
           {product.thumbnail_url || product.images?.[0] ? (
             <img
               src={product.thumbnail_url || product.images?.[0] || ''}
@@ -84,6 +105,14 @@ export function ProductCard({ product, className }: ProductCardProps) {
             </div>
           )}
 
+=======
+          <img
+            src={product.thumbnail_url || product.images?.[0] || '/placeholder.svg'}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
           {/* Overlay on hover */}
           <motion.div
             className="absolute inset-0 bg-black/20 flex items-center justify-center gap-2"
@@ -112,7 +141,11 @@ export function ProductCard({ product, className }: ProductCardProps) {
                 View
               </Button>
             )}
+<<<<<<< HEAD
 
+=======
+            
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
             {user && (
               <Button
                 size="icon"
@@ -177,6 +210,10 @@ export function ProductCard({ product, className }: ProductCardProps) {
           </p>
         </div>
       </Link>
+<<<<<<< HEAD
     </motion.div >
+=======
+    </motion.div>
+>>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
   );
 }

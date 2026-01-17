@@ -236,7 +236,6 @@ export default function Shop() {
               )}
             </div>
           </div>
-
         </div>
       </div>
     </div>
