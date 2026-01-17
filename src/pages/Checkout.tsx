@@ -71,17 +71,17 @@ export default function Checkout() {
         }))
       };
 
-      const res = await fetch('/api/create-charge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      // Call edge function
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: resData, error: fnError } = await supabase.functions.invoke('create-charge', {
+        body: payload,
       });
 
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json.error || 'Payment initialization failed');
+      if (fnError) {
+        throw new Error(fnError.message || 'Payment initialization failed');
       }
+
+      const json = resData;
 
       const authUrl = json?.init?.data?.authorization_url 
         || json?.init?.authorization_url 
