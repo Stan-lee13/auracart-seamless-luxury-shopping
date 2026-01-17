@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-paystack-signature",
 };
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -105,6 +105,20 @@ serve(async (req) => {
 
         if (orderError) {
           console.error("Order update error:", orderError);
+        }
+
+        // Trigger AliExpress Fulfillment
+        try {
+          // Fetch the order to get the UUID id (reference is the order_number)
+          const { data: order } = await supabaseClient.from("orders").select("id").eq("order_number", reference).single();
+          if (order) {
+            console.log("Triggering AliExpress fulfillment for order:", order.id);
+            await supabaseClient.functions.invoke('aliexpress-order-fulfillment', {
+              body: { orderId: order.id }
+            });
+          }
+        } catch (fulfillmentError) {
+          console.error("Fulfillment trigger failed (non-fatal for webhook):", fulfillmentError);
         }
 
         console.log("Payment success processed:", reference);

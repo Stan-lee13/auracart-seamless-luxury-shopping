@@ -15,7 +15,6 @@ serve(async (req: Request) => {
         const url = new URL(req.url);
         const code = url.searchParams.get("code");
         const error = url.searchParams.get("error");
-        const state = url.searchParams.get("state"); // Optional validation
 
         if (error) {
             throw new Error(`AliExpress Auth Error: ${error}`);
@@ -25,45 +24,57 @@ serve(async (req: Request) => {
             throw new Error("No authorization code returned from AliExpress");
         }
 
-        // Exchange code for token
         const appKey = Deno.env.get("ALIEXPRESS_APP_KEY");
         const appSecret = Deno.env.get("ALIEXPRESS_APP_SECRET");
-        const redirectUri = `${Deno.env.get("SUPABASE_URL")}/functions/v1/aliexpress-auth-callback`;
 
         if (!appKey || !appSecret) {
             throw new Error("Missing AliExpress App Key/Secret in environment variables");
         }
 
-        // Real AliExpress Token Endpoint (Top/IOP)
-        // Note: Use the official endpoint. Often it is https://api-sg.aliexpress.com/rest/2.0/auth/token/create or via IOP
-        // For standard OAuth:
-        const tokenResponse = await fetch("https://api-sg.aliexpress.com/oauth/access_token", {
+        // Official AliExpress Token CREATE endpoint (System Interface)
+        // Guidance: /auth/token/create via System Gateway
+        const tokenUrl = "https://api-sg.aliexpress.com/rest/2.0/auth/token/create";
+
+        const params = new URLSearchParams({
+            code,
+            grant_type: "authorization_code",
+            client_id: appKey,
+            client_secret: appSecret,
+        });
+
+        const tokenResponse = await fetch(tokenUrl, {
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
             },
-            body: new URLSearchParams({
-                code,
-                grant_type: "authorization_code",
-                client_id: appKey,
-                client_secret: appSecret,
-                redirect_uri: redirectUri,
-            }),
+            body: params.toString(),
         });
 
         const tokenData = await tokenResponse.json();
 
-        if (tokenData.error_response) {
-            throw new Error(`Token Exchange Failed: ${JSON.stringify(tokenData.error_response)}`);
+        // Handle errors in tokenData (AliExpress usually returns it within the body)
+        if (tokenData.error_response || tokenData.error) {
+            throw new Error(`Token Exchange Failed: ${JSON.stringify(tokenData.error_response || tokenData.error)}`);
         }
 
-        // Store tokens in Supabase
+        /**
+         * Standard Token Response:
+         * {
+         *   access_token: "...",
+         *   refresh_token: "...",
+         *   expires_in: 2592000,
+         *   refresh_token_valid_time: 15768000000,
+         *   account: "...",
+         *   ...
+         * }
+         */
+
         const supabaseClient = createClient(
             Deno.env.get("SUPABASE_URL") ?? "",
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        // Save to 'settings' table (key: aliexpress_tokens)
+        // Save tokens to 'settings' table
         const { error: dbError } = await supabaseClient
             .from('settings')
             .upsert({
@@ -72,28 +83,33 @@ serve(async (req: Request) => {
                     access_token: tokenData.access_token,
                     refresh_token: tokenData.refresh_token,
                     expires_in: tokenData.expires_in,
+                    refresh_token_valid_time: tokenData.refresh_token_valid_time,
+                    account: tokenData.account,
                     updated_at: new Date().toISOString()
-                }
+                },
+                description: 'Official AliExpress Dropshipping API Tokens'
             });
 
         if (dbError) throw dbError;
 
-        // Redirect to Admin Panel with success
-        const adminUrl = "https://auracart-admin.vercel.app/admin/settings?status=success"; // Or localhost if dev
-        // Better to use a dynamic Origin or Env var for frontend URL
-        // For now, redirect to a generic success page or the known frontend
+        // Success redirect back to the Admin Dashboard
+        // Using dynamic origin for flexibility
+        const origin = req.headers.get("origin") || "http://localhost:5173";
 
         return new Response(null, {
             status: 302,
             headers: {
                 ...corsHeaders,
-                Location: `${req.headers.get("origin") || "http://localhost:5173"}/admin/suppliers?aliexpress=connected`,
+                Location: `${origin}/admin/suppliers?status=connected&service=aliexpress`,
             },
         });
 
     } catch (error: any) {
-        console.error("Auth Callback Error:", error);
-        return new Response(JSON.stringify({ error: error?.message || 'Unknown Error' }), {
+        console.error("AliExpress Auth Callback Error:", error);
+        return new Response(JSON.stringify({
+            error: error?.message || 'Unknown Error',
+            details: "Please ensure your App Key and Secret are correct and your Redirect URI matches exactly."
+        }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 400,
         });

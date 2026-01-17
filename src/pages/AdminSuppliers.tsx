@@ -49,25 +49,20 @@ export default function AdminSuppliers() {
   const [aliConfig, setAliConfig] = useState<{ appKey: string; appSecret: string }>({ appKey: '', appSecret: '' });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
-  useEffect(() => {
-    fetchSuppliers();
-    checkAliConnection();
-    fetchAliConfig();
-  }, [session]);
-
-  const fetchAliConfig = async () => {
+  const fetchAliConfig = React.useCallback(async () => {
     try {
       const { data } = await supabase.from('settings').select('value').eq('key', 'aliexpress_config').maybeSingle();
-      if (data?.value) {
+      if (data?.value && typeof data.value === 'object') {
+        const value = data.value as Record<string, any>;
         setAliConfig({
-          appKey: (data.value as any).app_key || '',
-          appSecret: (data.value as any).app_secret || '',
+          appKey: value.app_key || '',
+          appSecret: value.app_secret || '',
         });
       }
     } catch (err) {
       console.error('Error fetching Ali config:', err);
     }
-  };
+  }, []);
 
   const handleSaveConfig = async () => {
     if (!aliConfig.appKey || !aliConfig.appSecret) {
@@ -76,20 +71,24 @@ export default function AdminSuppliers() {
     }
     setIsSavingConfig(true);
     try {
-      const { error } = await supabase.from('settings').upsert({
-        key: 'aliexpress_config',
-        value: { app_key: aliConfig.appKey, app_secret: aliConfig.appSecret }
+      const { data, error } = await supabase.functions.invoke('save-aliexpress-config', {
+        body: { appKey: aliConfig.appKey, appSecret: aliConfig.appSecret }
       });
+
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
       toast.success('AliExpress credentials saved successfully!');
-    } catch (err) {
-      toast.error('Failed to save configuration');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to save configuration';
+      console.error('Save config error:', err);
+      toast.error(message);
     } finally {
       setIsSavingConfig(false);
     }
   };
 
-  const checkAliConnection = async () => {
+  const checkAliConnection = React.useCallback(async () => {
     try {
       const { data } = await supabase
         .from('settings')
@@ -97,7 +96,7 @@ export default function AdminSuppliers() {
         .eq('key', 'aliexpress_tokens')
         .maybeSingle();
 
-      const val = data?.value as any;
+      const val = data?.value as Record<string, any> | null;
       if (val?.access_token) {
         setIsAliConnected(true);
       } else {
@@ -107,7 +106,36 @@ export default function AdminSuppliers() {
       console.error('Error checking Ali connection:', err);
       setIsAliConnected(false);
     }
-  };
+  }, []);
+
+  const fetchSuppliers = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      // Try to fetch from Node server first (for metrics)
+      const res = await fetch('/api/admin/suppliers', {
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      });
+
+      if (!res.ok) {
+        // Fallback to direct Supabase if Node server is down
+        const { data } = await supabase.from('supplier_metrics').select('*').limit(50);
+        setSuppliers(data as Supplier[] || []);
+      } else {
+        const data = await res.json();
+        setSuppliers(data.data || []);
+      }
+    } catch (e) {
+      logger.error('Failed to fetch suppliers', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.access_token]);
+
+  useEffect(() => {
+    fetchSuppliers();
+    checkAliConnection();
+    fetchAliConfig();
+  }, [fetchSuppliers, checkAliConnection, fetchAliConfig]);
 
   const handleConnectAliExpress = () => {
     if (!aliConfig.appKey) {
@@ -141,29 +169,6 @@ export default function AdminSuppliers() {
       setIsImporting(false);
     }
   };
-
-  async function fetchSuppliers() {
-    setLoading(true);
-    try {
-      // Try to fetch from Node server first (for metrics)
-      const res = await fetch('/api/admin/suppliers', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
-
-      if (!res.ok) {
-        // Fallback to direct Supabase if Node server is down
-        const { data } = await supabase.from('supplier_metrics' as any).select('*').limit(50);
-        setSuppliers(data as Supplier[] || []);
-      } else {
-        const data = await res.json();
-        setSuppliers(data.data || []);
-      }
-    } catch (e) {
-      logger.error('Failed to fetch suppliers', e);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function selectSupplier(supplier: Supplier) {
     setSelectedSupplier(supplier);

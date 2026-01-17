@@ -1,342 +1,309 @@
 /**
- * AliExpress Integration Module
+ * AliExpress Dropshipping Backend Client
  * 
- * Provides client for:
- * - Product search and catalog sync
- * - Order creation and tracking
- * - Inventory synchronization
- * - Supplier messaging
+ * Based on the Official AliExpress Open Platform Dropshipping Integration Guide.
  * 
- * Requires ALIEXPRESS_API_KEY and ALIEXPRESS_API_SECRET environment variables
+ * Features:
+ * - Taobao TOP Gateway Integration (gw.api.taobao.com)
+ * - MD5 Signing Protocol (TOP Standard)
+ * - Dropshipper API Methods (aliexpress.ds.*, aliexpress.trade.buy.*)
+ * - Token management (Auth/Refresh)
+ * - QPS Rate limiting and automatic retries
  */
 
+import crypto from 'crypto';
 import logger from '../logger.mjs';
 
-const ALIEXPRESS_API_KEY = process.env.ALIEXPRESS_API_KEY;
-const ALIEXPRESS_API_SECRET = process.env.ALIEXPRESS_API_SECRET;
-const ALIEXPRESS_API_BASE = 'https://openapi.aliexpress.com/router/rest';
+const APP_KEY = process.env.ALIEXPRESS_APP_KEY;
+const APP_SECRET = process.env.ALIEXPRESS_APP_SECRET;
+const GATEWAY_URL = 'https://gw.api.taobao.com/router/rest';
+const SYSTEM_AUTH_BASE = 'https://api-sg.aliexpress.com/rest/2.0';
 
-/**
- * AliExpress API Client
- */
 export class AliExpressClient {
-  constructor(apiKey = ALIEXPRESS_API_KEY, apiSecret = ALIEXPRESS_API_SECRET) {
-    if (!apiKey || !apiSecret) {
-      logger.warn('AliExpress credentials not configured — API calls will fail');
+  constructor(options = {}) {
+    this.appKey = options.appKey || APP_KEY;
+    this.appSecret = options.appSecret || APP_SECRET;
+    this.accessToken = options.accessToken || null;
+    this._lastRequestTime = 0;
+    this._minRequestInterval = 100; // 100ms interval for safety
+
+    if (!this.appKey || !this.appSecret) {
+      logger.warn('AliExpress credentials missing. API calls will fail.');
     }
-    this.apiKey = apiKey;
-    this.apiSecret = apiSecret;
   }
 
   /**
-   * Build request signature for AliExpress API
+   * Set the current access token and refresh details
    */
-  async _buildSignature(params) {
-    // Sort parameters and build query string
-    const sortedKeys = Object.keys(params).sort();
-    let queryString = '';
-    for (const key of sortedKeys) {
-      const value = params[key];
-      if (Array.isArray(value)) {
-        for (const item of value) {
-          queryString += `${key}=${encodeURIComponent(JSON.stringify(item))}&`;
-        }
+  setToken(data) {
+    this.accessToken = data.access_token;
+    this.refreshToken = data.refresh_token;
+    this.expiresAt = new Date(data.updated_at).getTime() + (data.expires_in * 1000);
+  }
+
+  /**
+   * Check if token is expired or close to it (e.g. within 30 mins)
+   */
+  isTokenExpired() {
+    if (!this.expiresAt) return true;
+    const thirtyMins = 30 * 60 * 1000;
+    return (Date.now() + thirtyMins) > this.expiresAt;
+  }
+
+  /**
+   * Automatic token maintenance
+   */
+  async ensureValidToken(supabase) {
+    if (this.isTokenExpired() && this.refreshToken) {
+      logger.info('AliExpress token expiring soon. Refreshing...');
+      const newData = await AliExpressClient.refreshToken(this.refreshToken);
+
+      if (newData.access_token) {
+        // Update local state
+        const updated_at = new Date().toISOString();
+        this.setToken({ ...newData, updated_at });
+
+        // Persist to Supabase
+        await supabase.from('settings').update({
+          value: {
+            ...newData,
+            updated_at
+          }
+        }).eq('key', 'aliexpress_tokens');
+
+        logger.info('AliExpress token refreshed successfully.');
       } else {
-        queryString += `${key}=${encodeURIComponent(value)}&`;
+        logger.error({ msg: 'Failed to refresh AliExpress token', error: newData });
+        throw new Error('AliExpress Re-authentication required.');
       }
-    }
-
-    // Sign with secret
-    const crypto = await import('crypto');
-    const { createHmac } = crypto;
-    const hmac = createHmac('sha256', this.apiSecret);
-    hmac.update(queryString);
-    return hmac.digest('hex').toUpperCase();
-  }
-
-  /**
-   * Search products on AliExpress
-   */
-  async searchProducts(keyword, { limit = 20, offset = 0, sortBy = 'total_tranpro_cask' } = {}) {
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error('AliExpress API credentials not configured');
-    }
-
-    try {
-      const params = {
-        app_key: this.apiKey,
-        timestamp: Date.now(),
-        method: 'aliexpress.postproduct.redefining.querystoreproduct',
-        format: 'json',
-        v: '2.0',
-        sign_type: 'MD5'
-      };
-
-      const body = {
-        keyword,
-        limit,
-        offset,
-        sort_by: sortBy
-      };
-
-      const resp = await fetch(ALIEXPRESS_API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, ...body })
-      });
-
-      const data = await resp.json();
-      if (!resp.ok || data.error_response) {
-        logger.error({ msg: 'AliExpress search failed', keyword, error: data });
-        return { error: data.error_response?.msg || 'Search failed', items: [] };
-      }
-
-      return {
-        items: data.resp_result?.products || [],
-        total: data.resp_result?.total_count || 0
-      };
-    } catch (e) {
-      logger.error({ msg: 'AliExpress search exception', keyword, err: String(e) });
-      return { error: String(e), items: [] };
     }
   }
 
   /**
-   * Get product details
+   * Sign request as per Taobao TOP protocol
+   * sign = upper(md5(secret + sorted_keys_values + secret))
    */
-  async getProductDetails(productId) {
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error('AliExpress API credentials not configured');
-    }
+  _generateSign(params) {
+    const sortedKeys = Object.keys(params).sort();
+    let query = this.appSecret;
 
-    try {
-      const params = {
-        app_key: this.apiKey,
-        timestamp: Date.now(),
-        method: 'aliexpress.postproduct.redefining.productdetail',
-        format: 'json',
-        v: '2.0',
-        sign_type: 'MD5'
-      };
-
-      const body = {
-        product_id: productId
-      };
-
-      const resp = await fetch(ALIEXPRESS_API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, ...body })
-      });
-
-      const data = await resp.json();
-      if (!resp.ok || data.error_response) {
-        logger.error({ msg: 'AliExpress product detail failed', productId, error: data });
-        return { error: data.error_response?.msg || 'Fetch failed' };
+    for (const key of sortedKeys) {
+      const val = params[key];
+      // Skip empty or binary
+      if (val !== undefined && val !== null && typeof val !== 'object') {
+        query += key + val;
+      } else if (typeof val === 'object') {
+        query += key + JSON.stringify(val);
       }
-
-      return { data: data.resp_result?.product || null };
-    } catch (e) {
-      logger.error({ msg: 'AliExpress product detail exception', productId, err: String(e) });
-      return { error: String(e) };
     }
+
+    query += this.appSecret;
+
+    return crypto
+      .createHash('md5')
+      .update(query, 'utf8')
+      .digest('hex')
+      .toUpperCase();
   }
 
   /**
-   * Check inventory for a product
+   * Throttles API requests to respect rate limits.
    */
-  async checkInventory(productId, skuId = null) {
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error('AliExpress API credentials not configured');
+  async _throttle() {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this._lastRequestTime;
+
+    if (timeSinceLastRequest < this._minRequestInterval) {
+      const timeToWait = this._minRequestInterval - timeSinceLastRequest;
+      logger.debug(`Throttling: Waiting for ${timeToWait}ms before next request.`);
+      await new Promise(resolve => setTimeout(resolve, timeToWait));
     }
-
-    try {
-      const params = {
-        app_key: this.apiKey,
-        timestamp: Date.now(),
-        method: 'aliexpress.postproduct.redefining.getinventory',
-        format: 'json',
-        v: '2.0',
-        sign_type: 'MD5'
-      };
-
-      const body = {
-        product_id: productId,
-        sku_id: skuId
-      };
-
-      const resp = await fetch(ALIEXPRESS_API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, ...body })
-      });
-
-      const data = await resp.json();
-      if (!resp.ok || data.error_response) {
-        logger.error({ msg: 'AliExpress inventory check failed', productId, error: data });
-        return { error: data.error_response?.msg || 'Inventory check failed', available: false };
-      }
-
-      const inventory = data.resp_result?.inventory || {};
-      return {
-        available: inventory.available_quantity > 0,
-        quantity: inventory.available_quantity || 0,
-        bulk_discount: inventory.bulk_discount || []
-      };
-    } catch (e) {
-      logger.error({ msg: 'AliExpress inventory check exception', productId, err: String(e) });
-      return { error: String(e), available: false };
-    }
+    this._lastRequestTime = Date.now(); // Update last request time after waiting (if any)
   }
 
   /**
-   * Submit order to AliExpress (order creation request)
+   * Low-level call to API gateway
    */
-  async submitOrder({ productId, skuId, quantity, shippingAddress, contactInfo }) {
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error('AliExpress API credentials not configured');
+  async _execute(method, body = {}, sessionRequired = true, retryCount = 0) {
+    if (sessionRequired && !this.accessToken) {
+      throw new Error(`Method ${method} requires an access token (session).`);
     }
 
+    await this._throttle();
+
+    const timestamp = new Date().toISOString().replace(/T/, ' ').replace(/\..+/, ''); // Format: yyyy-MM-dd HH:mm:ss
+
+    const params = {
+      method,
+      app_key: this.appKey,
+      timestamp,
+      format: 'json',
+      v: '2.0',
+      sign_method: 'md5',
+      ...body
+    };
+
+    if (this.accessToken) {
+      params.session = this.accessToken;
+    }
+
+    params.sign = this._generateSign(params);
+
     try {
-      const params = {
-        app_key: this.apiKey,
-        timestamp: Date.now(),
-        method: 'aliexpress.order.createorder',
-        format: 'json',
-        v: '2.0',
-        sign_type: 'MD5'
-      };
-
-      const body = {
-        product_id: productId,
-        sku_id: skuId,
-        qty: quantity,
-        address_name: shippingAddress?.name,
-        address_country: shippingAddress?.country || 'NG',
-        address_state: shippingAddress?.state,
-        address_city: shippingAddress?.city,
-        address_detail: shippingAddress?.street,
-        address_postal_code: shippingAddress?.postal_code,
-        address_phone_number: contactInfo?.phone,
-        buyer_email: contactInfo?.email
-      };
-
-      const resp = await fetch(ALIEXPRESS_API_BASE, {
+      const response = await fetch(GATEWAY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, ...body })
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8'
+        },
+        body: new URLSearchParams(params).toString()
       });
 
-      const data = await resp.json();
-      if (!resp.ok || data.error_response) {
-        logger.error({ msg: 'AliExpress order submit failed', productId, error: data });
-        return { error: data.error_response?.msg || 'Order submit failed' };
+      const data = await response.json();
+
+      if (data.error_response) {
+        const err = data.error_response;
+
+        // Handle common errors mentioned in guide
+        if (err.code === 7 || err.code === 33) { // QPS Limit or IP restriction/frequency
+          if (retryCount < 3) {
+            const backoff = Math.pow(2, retryCount) * 1000;
+            logger.warn(`AliExpress QPS Throttling for ${method}. Retrying in ${backoff}ms...`);
+            await new Promise(r => setTimeout(r, backoff));
+            return this._execute(method, body, sessionRequired, retryCount + 1);
+          }
+        }
+
+        logger.error({ msg: 'AliExpress API Error', method, code: err.code, sub_msg: err.sub_msg || err.msg });
+        throw new Error(`AliExpress Error [${err.code}]: ${err.sub_msg || err.msg}`);
       }
 
-      const order = data.resp_result?.order || {};
-      return {
-        success: true,
-        order_id: order.order_id,
-        trade_id: order.trade_id,
-        status: 'pending',
-        estimated_delivery: order.estimated_delivery_date
-      };
+      // Successful responses usually wrap result in [method_name_cleaned]_response
+      const responseKey = method.replace(/\./g, '_') + '_response';
+      return data[responseKey] || data;
     } catch (e) {
-      logger.error({ msg: 'AliExpress order submit exception', productId, err: String(e) });
-      return { error: String(e) };
+      // Retry for network issues too
+      if (retryCount < 3 && (e.message.includes('fetch') || e.message.includes('timeout'))) {
+        const backoff = Math.pow(2, retryCount) * 1000;
+        logger.warn(`AliExpress network error for ${method}. Retrying in ${backoff}ms...`);
+        await new Promise(r => setTimeout(r, backoff));
+        return this._execute(method, body, sessionRequired, retryCount + 1);
+      }
+      logger.error({ msg: 'AliExpress execution exception', method, err: e.message });
+      throw e;
     }
   }
 
+  // --- PRODUCT APIs ---
+
   /**
-   * Get order status
+   * Get bestseller feed (Recommended for Dropshippers)
+   * Method: aliexpress.ds.recommend.feed.get
    */
-  async getOrderStatus(tradeId) {
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error('AliExpress API credentials not configured');
-    }
+  async getBestsellerFeed({ feedName = 'DS bestseller', categoryId, pageNo = 1, pageSize = 50 } = {}) {
+    const params = {
+      feed_name: feedName,
+      page_no: pageNo,
+      page_size: pageSize
+    };
+    if (categoryId) params.category_id = categoryId;
 
-    try {
-      const params = {
-        app_key: this.apiKey,
-        timestamp: Date.now(),
-        method: 'aliexpress.order.getorderdetail',
-        format: 'json',
-        v: '2.0',
-        sign_type: 'MD5'
-      };
-
-      const body = {
-        trade_id: tradeId
-      };
-
-      const resp = await fetch(ALIEXPRESS_API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, ...body })
-      });
-
-      const data = await resp.json();
-      if (!resp.ok || data.error_response) {
-        logger.error({ msg: 'AliExpress order status check failed', tradeId, error: data });
-        return { error: data.error_response?.msg || 'Status check failed' };
-      }
-
-      const order = data.resp_result?.order || {};
-      return {
-        trade_id: order.trade_id,
-        status: order.trade_status,
-        status_text: order.status_text,
-        logistics_status: order.logistics_status,
-        logistics_status_text: order.logistics_status_text,
-        estimated_delivery: order.estimated_delivery_date,
-        tracking_number: order.tracking_no
-      };
-    } catch (e) {
-      logger.error({ msg: 'AliExpress order status check exception', tradeId, err: String(e) });
-      return { error: String(e) };
-    }
+    return this._execute('aliexpress.ds.recommend.feed.get', params);
   }
 
   /**
-   * Cancel order on AliExpress
+   * Get full product details (Dropshipper API)
+   * Method: aliexpress.ds.product.get
    */
-  async cancelOrder(tradeId, reason = 'Cancelled by merchant') {
-    if (!this.apiKey || !this.apiSecret) {
-      throw new Error('AliExpress API credentials not configured');
-    }
+  async getProduct(productId, { language = 'en', shipToCountry = 'US', currency = 'USD' } = {}) {
+    return this._execute('aliexpress.ds.product.get', {
+      product_id: productId,
+      local_language: language,
+      ship_to_country: shipToCountry,
+      local_currency: currency
+    });
+  }
 
-    try {
-      const params = {
-        app_key: this.apiKey,
-        timestamp: Date.now(),
-        method: 'aliexpress.order.cancelorder',
-        format: 'json',
-        v: '2.0',
-        sign_type: 'MD5'
-      };
+  // --- TRADE / ORDER APIs ---
 
-      const body = {
-        trade_id: tradeId,
-        cancel_reason: reason
-      };
+  /**
+   * Place Order (Dropshipper Order API)
+   * Method: aliexpress.trade.buy.placeorder
+   * Note: Guide specific complex request body
+   */
+  async placeOrder(orderRequest) {
+    // orderRequest should match PlaceOrderRequest4OpenApiDto
+    return this._execute('aliexpress.trade.buy.placeorder', {
+      param_place_order_request4_open_api_dto: JSON.stringify(orderRequest)
+    });
+  }
 
-      const resp = await fetch(ALIEXPRESS_API_BASE, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, ...body })
-      });
+  /**
+   * Query Order Detail (Dropshipper Order API)
+   * Method: aliexpress.trade.ds.order.get
+   */
+  async getOrderDetail(orderId) {
+    return this._execute('aliexpress.trade.ds.order.get', {
+      single_order_query: JSON.stringify({ order_id: orderId })
+    });
+  }
 
-      const data = await resp.json();
-      if (!resp.ok || data.error_response) {
-        logger.error({ msg: 'AliExpress order cancel failed', tradeId, error: data });
-        return { error: data.error_response?.msg || 'Cancel failed', success: false };
-      }
+  /**
+   * Query Tracking Info
+   * Method: aliexpress.logistics.ds.trackinginfo.query
+   */
+  async getTrackingInfo({ trackingNo, serviceName, orderId }) {
+    return this._execute('aliexpress.logistics.ds.trackinginfo.query', {
+      tracking_no: trackingNo,
+      logistics_service_name: serviceName,
+      out_ref: orderId
+    });
+  }
 
-      return { success: true, message: 'Order cancelled' };
-    } catch (e) {
-      logger.error({ msg: 'AliExpress order cancel exception', tradeId, err: String(e) });
-      return { error: String(e), success: false };
-    }
+  // --- SYSTEM / AUTH ---
+
+  /**
+   * Exchange Code for Token
+   * Endpoint: /auth/token/create
+   */
+  static async createToken(code) {
+    // Note: Guide says use api-sg.aliexpress.com for auth
+    const url = `${SYSTEM_AUTH_BASE}/auth/token/create`;
+    const params = new URLSearchParams({
+      code,
+      grant_type: 'authorization_code',
+      client_id: APP_KEY,
+      client_secret: APP_SECRET,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+
+    return response.json();
+  }
+
+  /**
+   * Refresh Token
+   * Endpoint: /auth/token/refresh
+   */
+  static async refreshToken(refreshToken) {
+    const url = `${SYSTEM_AUTH_BASE}/auth/token/refresh`;
+    const params = new URLSearchParams({
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+      client_id: APP_KEY,
+      client_secret: APP_SECRET,
+    });
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString()
+    });
+
+    return response.json();
   }
 }
 
