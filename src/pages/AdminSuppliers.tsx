@@ -149,8 +149,9 @@ export default function AdminSuppliers() {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const redirectUri = `${supabaseUrl}/functions/v1/aliexpress-auth-callback`;
 
-    // Using official AliExpress Auth URL from guide
-    const authUrl = `https://api-sg.aliexpress.com/oauth/authorize?response_type=code&client_id=${aliConfig.appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&view=web&sp=ae`;
+    // Using official AliExpress Auth URL from guide with state for dynamic redirect
+    const state = encodeURIComponent(window.location.origin);
+    const authUrl = `https://api-sg.aliexpress.com/oauth/authorize?response_type=code&client_id=${aliConfig.appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&view=web&sp=ae&state=${state}`;
 
     window.open(authUrl, '_blank');
   };

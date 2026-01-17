@@ -13,6 +13,7 @@ serve(async (req: Request) => {
 
     try {
         const url = new URL(req.url);
+        const state = url.searchParams.get("state");
         const code = url.searchParams.get("code");
         const error = url.searchParams.get("error");
 
@@ -88,14 +89,14 @@ serve(async (req: Request) => {
                     updated_at: new Date().toISOString()
                 },
                 description: 'Official AliExpress Dropshipping API Tokens'
-            });
+            }, { onConflict: 'key' });
 
         if (dbError) throw dbError;
 
         // Success redirect back to the Admin Dashboard
-        // We use the state parameter or a sensible default to find the frontend
-        const frontendUrl = req.headers.get("referer") || "http://localhost:5173";
-        const redirectUrl = new URL(frontendUrl);
+        // We use the state parameter (which contains the site origin) or a sensible fallback
+        const siteOrigin = state || req.headers.get("referer") || "http://localhost:5173";
+        const redirectUrl = new URL(siteOrigin);
         redirectUrl.pathname = "/admin/suppliers";
         redirectUrl.search = "status=connected&service=aliexpress";
 
