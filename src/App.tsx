@@ -10,11 +10,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 import { SearchFiltersBar } from "@/components/search/SearchFiltersBar";
-<<<<<<< HEAD
 import Landing from "./pages/Landing";
-=======
-import LandingPage from "./pages/Landing";
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
 import Shop from "./pages/Shop";
 import Categories from "./pages/Categories";
 import Product from "./pages/Product";
@@ -36,7 +32,7 @@ const queryClient = new QueryClient();
 // Route guard component
 function AuthAwareRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -44,19 +40,19 @@ function AuthAwareRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   // Logged-in users go to shop, logged-out users see landing
   if (user) {
     return <Navigate to="/shop" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
 // Protected route - requires auth for checkout/orders
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -64,11 +60,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
+
   if (!user) {
     return <Navigate to="/auth" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -83,24 +79,20 @@ function AppRoutes() {
           {/* Landing page - only for logged-out users */}
           <Route path="/" element={
             <AuthAwareRoute>
-<<<<<<< HEAD
               <Landing />
-=======
-              <LandingPage />
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
             </AuthAwareRoute>
           } />
-          
+
           {/* Shop & Product Routes - public browsing */}
           <Route path="/shop" element={<Shop />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/product/:slug" element={<Product />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/search" element={<Shop />} />
-          
+
           {/* Auth */}
           <Route path="/auth" element={<Auth />} />
-          
+
           {/* Protected Routes - require login to buy */}
           <Route path="/checkout" element={
             <ProtectedRoute>
@@ -122,7 +114,7 @@ function AppRoutes() {
               <Account />
             </ProtectedRoute>
           } />
-          
+
           {/* Admin Routes - protected by AdminLayout */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/orders" replace />} />
@@ -131,7 +123,7 @@ function AppRoutes() {
             <Route path="disputes" element={<AdminDisputes />} />
             <Route path="suppliers" element={<AdminSuppliers />} />
           </Route>
-          
+
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
