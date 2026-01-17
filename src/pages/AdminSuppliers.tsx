@@ -142,11 +142,15 @@ export default function AdminSuppliers() {
 
     // Check URL parameters for status
     const params = new URLSearchParams(window.location.search);
-    if (params.get('status') === 'connected') {
+    const status = params.get('status');
+    const errorParam = params.get('error');
+
+    if (status === 'connected') {
       toast.success('AliExpress account connected successfully!');
-      // Instantly re-check to confirm DB has been updated
       checkAliConnection();
-      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (status === 'error') {
+      toast.error(`Connection failed: ${errorParam || 'Unknown error'}`);
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, [fetchSuppliers, checkAliConnection, fetchAliConfig]);
@@ -160,8 +164,9 @@ export default function AdminSuppliers() {
     const redirectUri = `${supabaseUrl}/functions/v1/aliexpress-auth-callback`;
 
     // Using official AliExpress Auth URL from guide with state for dynamic redirect
+    // Removing view=web to let AliExpress decide the best view (mobile/desktop)
     const state = encodeURIComponent(window.location.origin);
-    const authUrl = `https://api-sg.aliexpress.com/oauth/authorize?response_type=code&client_id=${aliConfig.appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&view=web&sp=ae&state=${state}`;
+    const authUrl = `https://api-sg.aliexpress.com/oauth/authorize?response_type=code&client_id=${aliConfig.appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&sp=ae&state=${state}`;
 
     // Use same-tab redirect for better state management on mobile/tablets
     window.location.href = authUrl;

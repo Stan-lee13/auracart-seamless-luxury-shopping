@@ -7,35 +7,38 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
-    if (req.method === "OPTIONS") {
-        return new Response("ok", { headers: corsHeaders });
-    }
+    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+    const url = new URL(req.url);
+    const state = url.searchParams.get("state");
+    const siteOrigin = state ? decodeURIComponent(state) : "http://localhost:5173";
+    const redirectUrl = new URL(siteOrigin);
+    redirectUrl.pathname = "/admin/suppliers";
 
     try {
-        const url = new URL(req.url);
-        const state = url.searchParams.get("state");
         const code = url.searchParams.get("code");
-        const error = url.searchParams.get("error");
+        const errorParam = url.searchParams.get("error");
 
-        if (error) {
-            throw new Error(`AliExpress Auth Error: ${error}`);
-        }
+        if (errorParam) throw new Error(`AliExpress Auth Error: ${errorParam}`);
+        if (!code) throw new Error("No authorization code returned from AliExpress");
 
-        if (!code) {
-            throw new Error("No authorization code returned from AliExpress");
-        }
+        const supabaseClient = createClient(
+            Deno.env.get("SUPABASE_URL") ?? "",
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+        );
 
-        const appKey = Deno.env.get("ALIEXPRESS_APP_KEY");
-        const appSecret = Deno.env.get("ALIEXPRESS_APP_SECRET");
+        // 1. Get API Credentials from database (Preferred over ENV since user saves them in UI)
+        const { data: aliConfig } = await supabaseClient.from('settings').select('value').eq('key', 'aliexpress_config').maybeSingle();
+
+        const appKey = (aliConfig?.value as any)?.app_key || Deno.env.get("ALIEXPRESS_APP_KEY");
+        const appSecret = (aliConfig?.value as any)?.app_secret || Deno.env.get("ALIEXPRESS_APP_SECRET");
 
         if (!appKey || !appSecret) {
-            throw new Error("Missing AliExpress App Key/Secret in environment variables");
+            throw new Error("AliExpress App Key or Secret not found. Please save them in the Admin Panel first.");
         }
 
-        // Official AliExpress Token CREATE endpoint (System Interface)
-        // Guidance: /auth/token/create via System Gateway
+        // 2. Exchange Code for Token
         const tokenUrl = "https://api-sg.aliexpress.com/rest/2.0/auth/token/create";
-
         const params = new URLSearchParams({
             code,
             grant_type: "authorization_code",
@@ -45,40 +48,23 @@ serve(async (req: Request) => {
 
         const tokenResponse = await fetch(tokenUrl, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: params.toString(),
         });
 
         const tokenData = await tokenResponse.json();
 
-        // Handle errors in tokenData (AliExpress usually returns it within the body)
         if (tokenData.error_response || tokenData.error) {
-            throw new Error(`Token Exchange Failed: ${JSON.stringify(tokenData.error_response || tokenData.error)}`);
+            const errDetail = tokenData.error_response ? JSON.stringify(tokenData.error_response) : tokenData.error;
+            throw new Error(`Token Exchange Failed: ${errDetail}`);
         }
 
-        /**
-         * Standard Token Response:
-         * {
-         *   access_token: "...",
-         *   refresh_token: "...",
-         *   expires_in: 2592000,
-         *   refresh_token_valid_time: 15768000000,
-         *   account: "...",
-         *   ...
-         * }
-         */
+        // 3. Save tokens to 'settings' table (Using a delete-then-insert approach to be absolutely sure we don't hit duplicate keys)
+        await supabaseClient.from('settings').delete().eq('key', 'aliexpress_tokens');
 
-        const supabaseClient = createClient(
-            Deno.env.get("SUPABASE_URL") ?? "",
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-        );
-
-        // Save tokens to 'settings' table
         const { error: dbError } = await supabaseClient
             .from('settings')
-            .upsert({
+            .insert({
                 key: 'aliexpress_tokens',
                 value: {
                     access_token: tokenData.access_token,
@@ -89,33 +75,18 @@ serve(async (req: Request) => {
                     updated_at: new Date().toISOString()
                 },
                 description: 'Official AliExpress Dropshipping API Tokens'
-            }, { onConflict: 'key' });
+            });
 
         if (dbError) throw dbError;
 
-        // Success redirect back to the Admin Dashboard
-        // We use the state parameter (which contains the site origin) or a sensible fallback
-        const siteOrigin = state || req.headers.get("referer") || "http://localhost:5173";
-        const redirectUrl = new URL(siteOrigin);
-        redirectUrl.pathname = "/admin/suppliers";
+        // 4. Success Redirect
         redirectUrl.search = "status=connected&service=aliexpress";
+        return Response.redirect(redirectUrl.toString(), 302);
 
-        return new Response(null, {
-            status: 302,
-            headers: {
-                ...corsHeaders,
-                Location: redirectUrl.toString(),
-            },
-        });
-
-    } catch (error: any) {
-        console.error("AliExpress Auth Callback Error:", error);
-        return new Response(JSON.stringify({
-            error: error?.message || 'Unknown Error',
-            details: "Please ensure your App Key and Secret are correct and your Redirect URI matches exactly."
-        }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
-        });
+    } catch (err: any) {
+        console.error("AliExpress Auth Callback Error:", err);
+        // Instead of showing a JSON error, we redirect back to the app so the user stays in the mobile UI
+        redirectUrl.search = `status=error&error=${encodeURIComponent(err?.message || 'Unknown Error')}`;
+        return Response.redirect(redirectUrl.toString(), 302);
     }
 });
