@@ -93,14 +93,17 @@ serve(async (req: Request) => {
         if (dbError) throw dbError;
 
         // Success redirect back to the Admin Dashboard
-        // Using dynamic origin for flexibility
-        const origin = req.headers.get("origin") || "http://localhost:5173";
+        // We use the state parameter or a sensible default to find the frontend
+        const frontendUrl = req.headers.get("referer") || "http://localhost:5173";
+        const redirectUrl = new URL(frontendUrl);
+        redirectUrl.pathname = "/admin/suppliers";
+        redirectUrl.search = "status=connected&service=aliexpress";
 
         return new Response(null, {
             status: 302,
             headers: {
                 ...corsHeaders,
-                Location: `${origin}/admin/suppliers?status=connected&service=aliexpress`,
+                Location: redirectUrl.toString(),
             },
         });
 
