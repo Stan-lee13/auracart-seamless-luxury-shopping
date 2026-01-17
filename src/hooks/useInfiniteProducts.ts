@@ -18,7 +18,6 @@ export function useInfiniteProducts(options?: {
   return useInfiniteQuery({
     queryKey: ['products-infinite', options],
     queryFn: async ({ pageParam = 0 }) => {
-<<<<<<< HEAD
       // Use !inner join when filtering by category to ensure we can filter by the joined table
       // and only get products that belong to the category
       const selectQuery = options?.categorySlug
@@ -36,15 +35,6 @@ export function useInfiniteProducts(options?: {
       let query = supabase
         .from('products')
         .select(selectQuery, { count: 'exact' })
-=======
-      let query = supabase
-        .from('products')
-        .select(`
-          *,
-          category:categories(*),
-          variants:product_variants(*)
-        `, { count: 'exact' })
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
         .eq('is_active', true)
         .range(pageParam * PAGE_SIZE, (pageParam + 1) * PAGE_SIZE - 1);
 
@@ -68,13 +58,8 @@ export function useInfiniteProducts(options?: {
       }
 
       if (options?.categorySlug) {
-<<<<<<< HEAD
         // Filter by category slug using the inner joined table
         query = query.eq('category.slug', options.categorySlug);
-=======
-        // Need to filter by category slug after fetching
-        query = query.not('category_id', 'is', null);
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
       }
 
       if (options?.search) {
@@ -85,7 +70,6 @@ export function useInfiniteProducts(options?: {
 
       if (error) throw error;
 
-<<<<<<< HEAD
       return {
         products: data as Product[],
         nextPage: (data?.length || 0) === PAGE_SIZE ? pageParam + 1 : undefined,
@@ -93,23 +77,6 @@ export function useInfiniteProducts(options?: {
       };
     },
     getNextPageParam: (lastPage: { nextPage: number | undefined }) => lastPage.nextPage,
-=======
-      // Filter by category slug client-side if needed
-      let filteredData = data as Product[];
-      if (options?.categorySlug) {
-        filteredData = filteredData.filter(
-          p => p.category?.slug === options.categorySlug
-        );
-      }
-
-      return {
-        products: filteredData,
-        nextPage: filteredData.length === PAGE_SIZE ? pageParam + 1 : undefined,
-        totalCount: count || 0,
-      };
-    },
-    getNextPageParam: (lastPage) => lastPage.nextPage,
->>>>>>> d29cb800a0e23ebba2ad870c7716bda306c9b698
     initialPageParam: 0,
   });
 }

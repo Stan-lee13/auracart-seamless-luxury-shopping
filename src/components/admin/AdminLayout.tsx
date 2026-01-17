@@ -39,10 +39,11 @@ export default function AdminLayout() {
   // Check both role AND email whitelist
   const isEmailAllowed = user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
-  // Access control relies on BOTH database role (isAdmin) AND hardcoded emails
-  if (!isAdmin || !isEmailAllowed) {
-    if (!isAdmin) console.warn('Admin Access Denied: User does not have admin role in database.');
-    if (!isEmailAllowed) console.warn(`Admin Access Denied: Email ${user?.email} is not in the whitelist.`);
+  // Access control: Allow if user has admin role OR is in the email whitelist
+  const hasAccess = isAdmin || isEmailAllowed;
+
+  if (!hasAccess) {
+    console.warn(`Admin Access Denied. User: ${user?.email}, Role: ${isAdmin ? 'Admin' : 'User'}, Whitelisted: ${isEmailAllowed}`);
 
     // Silently redirect non-admins to account page (not auth)
     return <Navigate to="/account" replace />;
