@@ -12,14 +12,33 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
 export default function Account() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [isUpdating, setIsUpdating] = useState(false);
+  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [phone, setPhone] = useState(profile?.phone || '');
 
   if (!user) {
     navigate('/auth');
     return null;
   }
+
+  const handleUpdateProfile = async () => {
+    setIsUpdating(true);
+    try {
+      const { error } = await updateProfile({
+        full_name: fullName,
+        phone: phone,
+      });
+      if (error) throw error;
+      toast.success('Profile updated successfully');
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || 'Failed to update profile');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -28,8 +47,8 @@ export default function Account() {
   };
 
   const getInitials = () => {
-    if (profile?.full_name) {
-      return profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase();
+    if (fullName) {
+      return fullName.split(' ').map(n => n[0]).join('').toUpperCase();
     }
     return user.email?.[0].toUpperCase() || 'U';
   };
@@ -90,30 +109,32 @@ export default function Account() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name</Label>
-                    <Input 
-                      id="fullName" 
-                      defaultValue={profile?.full_name || ''} 
+                    <Input
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
                       placeholder="Enter your name"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      value={user.email || ''} 
-                      disabled 
+                    <Input
+                      id="email"
+                      value={user.email || ''}
+                      disabled
                       className="bg-muted"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone</Label>
-                    <Input 
-                      id="phone" 
-                      defaultValue={profile?.phone || ''} 
+                    <Input
+                      id="phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       placeholder="+234 xxx xxx xxxx"
                     />
                   </div>
-                  <Button disabled={isUpdating}>
+                  <Button onClick={handleUpdateProfile} disabled={isUpdating}>
                     {isUpdating ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </CardContent>
@@ -125,7 +146,7 @@ export default function Account() {
                   <CardDescription>Manage your account preferences</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Link 
+                  <Link
                     to="/account/change-password"
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
                   >
@@ -135,7 +156,7 @@ export default function Account() {
                     </div>
                     <ChevronRight className="h-5 w-5 text-muted-foreground" />
                   </Link>
-                  <button 
+                  <button
                     onClick={handleSignOut}
                     className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-destructive/10 text-destructive transition-colors"
                   >

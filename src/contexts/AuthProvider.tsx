@@ -107,6 +107,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: error as Error | null };
     };
 
+    const updateProfile = async (updates: Partial<Profile>) => {
+        if (!user) return { error: new Error('No user logged in') };
+
+        const { error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', user.id);
+
+        if (!error) {
+            await fetchProfile(user.id);
+        }
+
+        return { error: error as Error | null };
+    };
+
     const signOut = async () => {
         await supabase.auth.signOut();
         setIsAdmin(false);
@@ -122,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             signUp,
             signIn,
             signOut,
+            updateProfile,
             isAdmin,
         }}>
             {children}

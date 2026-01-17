@@ -22,6 +22,7 @@ export default function Checkout() {
   const [streetAddress, setStreetAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,6 +58,7 @@ export default function Checkout() {
           street_address: streetAddress,
           city,
           state,
+          postal_code: postalCode,
           country: 'Nigeria',
         },
         line_items: cart.items.map(item => ({
@@ -227,6 +229,17 @@ export default function Checkout() {
                       className="mt-1"
                     />
                   </div>
+                </div>
+                <div>
+                  <Label htmlFor="postalCode">Postal Code / Zip</Label>
+                  <Input
+                    id="postalCode"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    required
+                    placeholder="100001"
+                    className="mt-1"
+                  />
                 </div>
               </CardContent>
             </Card>

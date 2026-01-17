@@ -92,21 +92,26 @@ export default function AdminSuppliers() {
   };
 
   const checkAliConnection = React.useCallback(async () => {
+    console.info('[AliExpress] Checking connection status...');
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('settings')
         .select('value')
         .eq('key', 'aliexpress_tokens')
         .maybeSingle();
 
+      if (error) throw error;
+
       const val = data?.value as Record<string, unknown> | null;
       if (val && typeof val.access_token === 'string') {
+        console.info('[AliExpress] Connection found for account:', val.account || 'Authenticated');
         setIsAliConnected(true);
       } else {
+        console.info('[AliExpress] No valid connection tokens found.');
         setIsAliConnected(false);
       }
     } catch (err) {
-      console.error('Error checking Ali connection:', err);
+      console.error('[AliExpress] Error checking connection:', err);
       setIsAliConnected(false);
     }
   }, []);
@@ -147,9 +152,14 @@ export default function AdminSuppliers() {
 
     if (status === 'connected') {
       toast.success('AliExpress account connected successfully!');
-      checkAliConnection();
+      // Give the database a moment to propagate the new tokens
+      console.info('[AliExpress] Redirect detected: connected. Triggering re-validation in 1.5s...');
+      setTimeout(() => {
+        checkAliConnection();
+      }, 1500);
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (status === 'error') {
+      console.error('[AliExpress] Redirect detected: error.', errorParam);
       toast.error(`Connection failed: ${errorParam || 'Unknown error'}`);
       window.history.replaceState({}, document.title, window.location.pathname);
     }

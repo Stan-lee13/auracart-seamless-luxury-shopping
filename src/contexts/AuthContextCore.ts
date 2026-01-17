@@ -12,6 +12,7 @@ export interface AuthContextType {
     signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
     signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
     signOut: () => Promise<void>;
+    updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
     isAdmin: boolean;
 }
 
