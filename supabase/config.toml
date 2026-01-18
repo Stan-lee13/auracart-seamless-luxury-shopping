@@ -11,3 +11,12 @@ verify_jwt = false
 
 [functions.paystack-webhook]
 verify_jwt = false
+
+[functions.save-aliexpress-config]
+verify_jwt = false
+
+[functions.aliexpress-auth-callback]
+verify_jwt = false
+
+[functions.import-products]
+verify_jwt = false

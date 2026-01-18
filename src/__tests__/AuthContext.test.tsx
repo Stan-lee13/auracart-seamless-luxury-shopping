@@ -105,8 +105,8 @@ describe('AuthContext', () => {
           // Simulate session established
           callback('SIGNED_IN', { user: mockUser } as any);
           return {
-            data: { subscription: { unsubscribe: vi.fn() } },
-          };
+            data: { subscription: { id: 'test-sub-1', callback, unsubscribe: vi.fn() } },
+          } as any;
         }
       );
 
@@ -146,8 +146,8 @@ describe('AuthContext', () => {
         (callback: any) => {
           callback('SIGNED_IN', { user: mockUser } as any);
           return {
-            data: { subscription: { unsubscribe: vi.fn() } },
-          };
+            data: { subscription: { id: 'test-sub-2', callback, unsubscribe: vi.fn() } },
+          } as any;
         }
       );
 
@@ -189,8 +189,8 @@ describe('AuthContext', () => {
           lastCallback = callback;
           callback('SIGNED_IN', { user: mockUser } as any);
           return {
-            data: { subscription: { unsubscribe: vi.fn() } },
-          };
+            data: { subscription: { id: 'test-sub-3', callback, unsubscribe: vi.fn() } },
+          } as any;
         }
       );
 

@@ -7,7 +7,10 @@ const corsHeaders = {
 };
 
 serve(async (req: Request) => {
-    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+    // Handle CORS preflight
+    if (req.method === "OPTIONS") {
+        return new Response(null, { headers: corsHeaders });
+    }
 
     try {
         const supabaseClient = createClient(
@@ -15,32 +18,72 @@ serve(async (req: Request) => {
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
         );
 
-        // Verify user is an admin or whitelisted
+        // Verify user is authenticated
         const authHeader = req.headers.get("Authorization");
-        if (!authHeader) throw new Error("Unauthorized");
+        if (!authHeader) {
+            return new Response(JSON.stringify({ error: "Unauthorized: No auth header" }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 401
+            });
+        }
 
-        const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace("Bearer ", ""));
-        if (authError || !user) throw new Error("Unauthorized");
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
+        
+        if (authError || !user) {
+            console.error("Auth error:", authError);
+            return new Response(JSON.stringify({ error: "Unauthorized: Invalid token" }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 401
+            });
+        }
 
+        // Admin whitelist check
         const ADMIN_EMAILS = ['stanleyvic13@gmail.com', 'stanleyvic14@gmail.com'];
         const isWhitelisted = ADMIN_EMAILS.includes(user.email?.toLowerCase() || "");
 
         if (isWhitelisted) {
-            // Self-healing: Ensure whitelisted users actually have the admin role in the DB
-            console.log(`User ${user.email} is in whitelist. Ensuring admin role exists.`);
-            await supabaseClient.from('user_roles').upsert({ user_id: user.id, role: 'admin' }, { onConflict: 'user_id,role' });
+            // Self-healing: Ensure whitelisted users have the admin role
+            console.log(`User ${user.email} is whitelisted. Ensuring admin role exists.`);
+            await supabaseClient.from('user_roles').upsert(
+                { user_id: user.id, role: 'admin' }, 
+                { onConflict: 'user_id,role' }
+            );
         } else {
-            // Otherwise check database role
-            const { data: roleData } = await supabaseClient.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle();
+            // Check database role for non-whitelisted users
+            const { data: roleData } = await supabaseClient
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', user.id)
+                .eq('role', 'admin')
+                .maybeSingle();
+            
             if (!roleData) {
-                throw new Error("Unauthorized: Admin access required.");
+                return new Response(JSON.stringify({ error: "Unauthorized: Admin access required" }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    status: 403
+                });
             }
         }
 
-        const { appKey, appSecret } = await req.json();
+        // Parse request body
+        let body;
+        try {
+            body = await req.json();
+        } catch {
+            return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400
+            });
+        }
+
+        const { appKey, appSecret } = body;
 
         if (!appKey || !appSecret) {
-            throw new Error("App Key and Secret are required.");
+            return new Response(JSON.stringify({ error: "App Key and Secret are required" }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400
+            });
         }
 
         // Upsert into settings table using service role (bypasses RLS)
@@ -52,22 +95,29 @@ serve(async (req: Request) => {
                 updated_at: new Date().toISOString()
             }, { onConflict: 'key' });
 
-        if (upsertError) throw upsertError;
+        if (upsertError) {
+            console.error("Upsert error:", upsertError);
+            return new Response(JSON.stringify({ error: upsertError.message }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 500
+            });
+        }
 
+        console.log(`Config saved successfully by ${user.email}`);
         return new Response(JSON.stringify({ success: true, message: "Configuration saved successfully" }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200
         });
 
     } catch (err: unknown) {
-        const error = err as Error;
-        console.error("Save Ali Config Error:", error);
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error("Save AliExpress Config Error:", error.message, error.stack);
         return new Response(JSON.stringify({
             error: error.message,
-            stack: error.stack,
             context: "save-aliexpress-config"
         }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400
+            status: 500
         });
     }
 });

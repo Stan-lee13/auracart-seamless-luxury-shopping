@@ -161,7 +161,7 @@ export default function Product() {
                   {formatCurrency(displayPrice)}
                 </span>
                 {inStock ? (
-                  <Badge variant="success" className="bg-green-100 text-green-800 border-green-200">In Stock</Badge>
+                  <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">In Stock</Badge>
                 ) : (
                   <Badge variant="destructive">Out of Stock</Badge>
                 )}
@@ -287,7 +287,7 @@ export default function Product() {
             </TabsContent>
             <TabsContent value="details" className="pb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4">
-                {Object.entries(product.metadata || {}).map(([key, value]) => (
+                {Object.entries((product as any).metadata || {}).map(([key, value]) => (
                   <div key={key} className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground capitalize">{key.replace('_', ' ')}</span>
                     <span className="font-medium">{String(value)}</span>
