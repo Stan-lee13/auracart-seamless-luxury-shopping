@@ -147,8 +147,9 @@ serve(async (req: Request) => {
 
                     if (!error) totalImported++;
 
-                } catch (prodErr) {
-                    console.error(`Failed to import individual product ${candidate.product_id}:`, prodErr.message);
+                } catch (prodErr: unknown) {
+                    const errMessage = prodErr instanceof Error ? prodErr.message : String(prodErr);
+                    console.error(`Failed to import individual product ${candidate.product_id}:`, errMessage);
                 }
             }
         }
