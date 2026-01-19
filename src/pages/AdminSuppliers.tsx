@@ -284,7 +284,7 @@ export default function AdminSuppliers() {
     return `${Math.round(value * 100)}%`;
   };
 
-  const currentRedirectUri = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aliexpress-auth-callback`;
+  const currentRedirectUri = `https://auracartcom.vercel.app/api/aliexpress/callback`;
 
   return (
     <div className="space-y-6 pb-20">
