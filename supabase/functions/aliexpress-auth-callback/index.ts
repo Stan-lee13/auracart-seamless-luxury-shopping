@@ -39,12 +39,19 @@ serve(async (req: Request) => {
         }
 
         // Token Exchange
+        // For AliExpress Global REST API, the token create endpoint often expects app_key and app_secret
+        // instead of client_id/client_secret, and redirect_uri is mandatory if used in the authorize step.
         const tokenUrl = "https://api-sg.aliexpress.com/rest/2.0/auth/token/create";
+
+        const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+        const redirectUri = "https://auracartcom.vercel.app/api/aliexpress/callback";
+
         const params = new URLSearchParams({
             code,
             grant_type: "authorization_code",
-            client_id: appKey,
-            client_secret: appSecret,
+            app_key: appKey,
+            app_secret: appSecret,
+            redirect_uri: redirectUri,
         });
 
         const tokenResponse = await fetch(tokenUrl, {

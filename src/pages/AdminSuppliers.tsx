@@ -171,7 +171,7 @@ export default function AdminSuppliers() {
       return;
     }
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const redirectUri = `${supabaseUrl}/functions/v1/aliexpress-auth-callback`;
+    const redirectUri = `${window.location.origin}/api/aliexpress/callback`;
 
     // Using official AliExpress Auth URL from guide with state for dynamic redirect
     // Removing view=web to let AliExpress decide the best view (mobile/desktop)
