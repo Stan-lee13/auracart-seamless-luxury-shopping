@@ -145,10 +145,58 @@ export default function AdminSuppliers() {
     checkAliConnection();
     fetchAliConfig();
 
-    // Check URL parameters for status
+    // Check URL parameters for status or direct code from AliExpress
     const params = new URLSearchParams(window.location.search);
     const status = params.get('status');
     const errorParam = params.get('error');
+    const directCode = params.get('code'); // Handle direct AliExpress redirect
+
+    // Handle direct code from AliExpress (when it ignores callback URL)
+    useEffect(() => {
+      if (directCode && !isAliConnected) {
+        console.log('Direct code detected, processing OAuth...');
+        handleDirectOAuthCode(directCode);
+      }
+    }, [directCode, isAliConnected]);
+
+    const handleDirectOAuthCode = async (code: string) => {
+      try {
+        const { data: aliConfig } = await supabase
+          .from('settings')
+          .select('value')
+          .eq('key', 'aliexpress_config')
+          .maybeSingle();
+
+        if (!aliConfig?.app_key || !aliConfig?.app_secret) {
+          toast.error('Please save your AliExpress App Key first.');
+          return;
+        }
+
+        // Call edge function directly with code
+        const { data, error } = await supabase.functions.invoke('aliexpress-auth-callback', {
+          body: { code, state: window.location.origin }
+        });
+
+        if (error) {
+          toast.error(`OAuth failed: ${error.message}`);
+          return;
+        }
+
+        if (data?.success) {
+          toast.success('AliExpress account connected successfully!');
+          setTimeout(() => {
+            checkAliConnection();
+          }, 1500);
+          // Clean URL
+          window.location.replace('/admin/suppliers');
+        } else {
+          toast.error('Connection failed');
+        }
+      } catch (err) {
+        console.error('Direct OAuth error:', err);
+        toast.error('OAuth failed');
+      }
+    };
 
     if (status === 'connected') {
       toast.success('AliExpress account connected successfully!');
