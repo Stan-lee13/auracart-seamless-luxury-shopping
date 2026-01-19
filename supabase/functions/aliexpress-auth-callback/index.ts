@@ -88,13 +88,25 @@ serve(async (req: Request) => {
 
         if (dbError) throw dbError;
 
-        redirectUrl.searchParams.set("status", "connected");
-        return Response.redirect(redirectUrl.toString(), 302);
+        // Return success response instead of redirect
+        return new Response(JSON.stringify({
+            success: true,
+            status: "connected",
+            account: tokenData.account
+        }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200
+        });
 
     } catch (err: any) {
         console.error("Critical Auth Error:", err.message);
-        redirectUrl.searchParams.set("status", "error");
-        redirectUrl.searchParams.set("error", err.message);
-        return Response.redirect(redirectUrl.toString(), 302);
+        return new Response(JSON.stringify({
+            success: false,
+            status: "error",
+            error: err.message
+        }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400
+        });
     }
 });

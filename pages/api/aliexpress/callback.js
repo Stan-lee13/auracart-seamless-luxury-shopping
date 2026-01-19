@@ -31,21 +31,18 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Supabase edge function error:', errorText);
-      throw new Error('Token exchange failed');
+      return res.redirect('/admin/suppliers?status=error&error=' + encodeURIComponent('Token exchange failed'));
     }
 
-    // The edge function will handle the redirect back to frontend
-    // But we need to handle it here since we're on Vercel
-    const responseData = await response.text();
+    // Parse JSON response from edge function
+    const responseData = await response.json();
+    console.log('Edge function response:', responseData);
     
-    // Check if the response contains a redirect
-    if (responseData.includes('status=connected')) {
+    if (responseData.success) {
       return res.redirect('/admin/suppliers?status=connected');
-    } else if (responseData.includes('status=error')) {
-      return res.redirect('/admin/suppliers?status=error&error=Callback failed');
+    } else {
+      return res.redirect('/admin/suppliers?status=error&error=' + encodeURIComponent(responseData.error || 'Unknown error'));
     }
-
-    return res.redirect('/admin/suppliers?status=connected');
 
   } catch (error) {
     console.error('OAuth callback error:', error);
