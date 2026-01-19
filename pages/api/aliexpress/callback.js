@@ -1,4 +1,6 @@
 export default async function handler(req, res) {
+  console.log('OAuth callback called with query:', req.query);
+  
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -6,19 +8,32 @@ export default async function handler(req, res) {
   const { code, state, error } = req.query;
 
   if (error) {
+    console.error('OAuth error from AliExpress:', error);
     return res.redirect('/admin/suppliers?status=error&error=' + encodeURIComponent(error));
   }
 
   if (!code) {
+    console.error('No authorization code received');
     return res.redirect('/admin/suppliers?status=error&error=No authorization code');
   }
 
   try {
-    // Call your Supabase edge function with the authorization code
+    // Check environment variables
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
     
+    console.log('Environment check:', { 
+      supabaseUrl: supabaseUrl ? 'present' : 'missing',
+      supabaseAnonKey: supabaseAnonKey ? 'present' : 'missing'
+    });
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error('Missing environment variables');
+      return res.redirect('/admin/suppliers?status=error&error=' + encodeURIComponent('Server configuration error'));
+    }
+    
     const callbackUrl = `${supabaseUrl}/functions/v1/aliexpress-auth-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}`;
+    console.log('Calling edge function:', callbackUrl);
     
     const response = await fetch(callbackUrl, {
       method: 'GET',
@@ -28,6 +43,8 @@ export default async function handler(req, res) {
       }
     });
 
+    console.log('Edge function response status:', response.status);
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Supabase edge function error:', errorText);
@@ -39,8 +56,10 @@ export default async function handler(req, res) {
     console.log('Edge function response:', responseData);
     
     if (responseData.success) {
+      console.log('OAuth successful, redirecting to success page');
       return res.redirect('/admin/suppliers?status=connected');
     } else {
+      console.error('OAuth failed:', responseData.error);
       return res.redirect('/admin/suppliers?status=error&error=' + encodeURIComponent(responseData.error || 'Unknown error'));
     }
 
