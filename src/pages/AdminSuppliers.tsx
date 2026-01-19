@@ -157,11 +157,13 @@ export default function AdminSuppliers() {
       setTimeout(() => {
         checkAliConnection();
       }, 1500);
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Use replace to clear URL parameters completely
+      window.location.replace('/admin/suppliers');
     } else if (status === 'error') {
       console.error('[AliExpress] Redirect detected: error.', errorParam);
       toast.error(`Connection failed: ${errorParam || 'Unknown error'}`);
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Use replace to clear URL parameters completely
+      window.location.replace('/admin/suppliers');
     }
   }, [fetchSuppliers, checkAliConnection, fetchAliConfig]);
 

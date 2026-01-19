@@ -57,10 +57,11 @@ export default async function handler(req, res) {
     
     if (responseData.success) {
       console.log('OAuth successful, redirecting to success page');
-      return res.redirect('/admin/suppliers?status=connected');
+      // Use window.location.replace to clear URL parameters
+      return res.redirect('/admin/suppliers?status=connected&timestamp=' + Date.now());
     } else {
       console.error('OAuth failed:', responseData.error);
-      return res.redirect('/admin/suppliers?status=error&error=' + encodeURIComponent(responseData.error || 'Unknown error'));
+      return res.redirect('/admin/suppliers?status=error&error=' + encodeURIComponent(responseData.error || 'Unknown error') + '&timestamp=' + Date.now());
     }
 
   } catch (error) {
