@@ -20,3 +20,12 @@ verify_jwt = false
 
 [functions.import-products]
 verify_jwt = false
+
+[functions.refresh-aliexpress-token]
+verify_jwt = false
+
+[functions.aliexpress-order-fulfillment]
+verify_jwt = false
+
+[functions.fix-admin-permissions]
+verify_jwt = false

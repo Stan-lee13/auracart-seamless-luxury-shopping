@@ -3,8 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const PRODUCTION_REDIRECT_URI = "https://auracartcom.vercel.app/api/aliexpress/callback";
 
 serve(async (req: Request) => {
   console.log("=== AliExpress Auth Callback Edge Function ===");
@@ -17,23 +19,43 @@ serve(async (req: Request) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const code = url.searchParams.get("code");
-    const state = url.searchParams.get("state");
-    const errorParam = url.searchParams.get("error");
+    let code: string | null = null;
+    let state: string | null = null;
+    let redirectUri: string = PRODUCTION_REDIRECT_URI;
+
+    // Support both GET (query params) and POST (body)
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      code = url.searchParams.get("code");
+      state = url.searchParams.get("state");
+      
+      const errorParam = url.searchParams.get("error");
+      if (errorParam) {
+        console.error("AliExpress returned error:", errorParam);
+        return new Response(
+          JSON.stringify({ success: false, error: `AliExpress Auth Error: ${errorParam}` }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    } else if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        code = body.code;
+        state = body.state;
+        redirectUri = body.redirect_uri || PRODUCTION_REDIRECT_URI;
+        console.log("POST body received:", { code: code?.substring(0, 10) + "...", state, redirectUri });
+      } catch (parseErr) {
+        console.error("Failed to parse request body:", parseErr);
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid request body" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+        );
+      }
+    }
 
     console.log("Code:", code ? code.substring(0, 10) + "..." : "missing");
     console.log("State:", state);
-    console.log("Error param:", errorParam);
-
-    // Handle OAuth errors from AliExpress
-    if (errorParam) {
-      console.error("AliExpress returned error:", errorParam);
-      return new Response(
-        JSON.stringify({ success: false, error: `AliExpress Auth Error: ${errorParam}` }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-      );
-    }
+    console.log("Redirect URI:", redirectUri);
 
     // Validate authorization code
     if (!code) {
@@ -51,7 +73,7 @@ serve(async (req: Request) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Missing Supabase environment variables");
       return new Response(
-        JSON.stringify({ success: false, error: "Server configuration error" }),
+        JSON.stringify({ success: false, error: "Server configuration error: Missing Supabase credentials" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
@@ -69,7 +91,7 @@ serve(async (req: Request) => {
     if (configError) {
       console.error("Error fetching config:", configError);
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to fetch AliExpress config" }),
+        JSON.stringify({ success: false, error: "Failed to fetch AliExpress config from database" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
@@ -78,7 +100,7 @@ serve(async (req: Request) => {
     const appKey = config?.app_key || Deno.env.get("ALIEXPRESS_APP_KEY");
     const appSecret = config?.app_secret || Deno.env.get("ALIEXPRESS_APP_SECRET");
 
-    console.log("App Key:", appKey ? "present" : "missing");
+    console.log("App Key:", appKey ? `${appKey.substring(0, 5)}...` : "missing");
     console.log("App Secret:", appSecret ? "present" : "missing");
 
     if (!appKey || !appSecret) {
@@ -90,25 +112,25 @@ serve(async (req: Request) => {
     }
 
     // Exchange authorization code for access token
-    // AliExpress OAuth token endpoint
+    // AliExpress OAuth token endpoint (Singapore gateway)
     const tokenUrl = "https://api-sg.aliexpress.com/rest/2.0/auth/token/create";
-    const redirectUri = "https://auracartcom.vercel.app/api/aliexpress/callback";
 
     console.log("Exchanging code for token at:", tokenUrl);
-    console.log("Redirect URI:", redirectUri);
+    console.log("Using redirect URI:", redirectUri);
 
+    // Build form-encoded body as per AliExpress spec
     const tokenParams = new URLSearchParams({
       code: code,
       grant_type: "authorization_code",
-      app_key: appKey,
-      app_secret: appSecret,
+      client_id: appKey,
+      client_secret: appSecret,
       redirect_uri: redirectUri,
     });
 
     console.log("Token request params:", {
       code: code.substring(0, 10) + "...",
       grant_type: "authorization_code",
-      app_key: appKey.substring(0, 5) + "...",
+      client_id: appKey.substring(0, 5) + "...",
       redirect_uri: redirectUri,
     });
 
@@ -128,7 +150,7 @@ serve(async (req: Request) => {
     } catch (parseErr) {
       console.error("Failed to parse token response:", parseErr);
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid response from AliExpress token endpoint" }),
+        JSON.stringify({ success: false, error: "Invalid response from AliExpress token endpoint", raw: tokenText }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
@@ -137,7 +159,7 @@ serve(async (req: Request) => {
     if (tokenData.error_response || tokenData.error) {
       const errorMsg = tokenData.error_response 
         ? JSON.stringify(tokenData.error_response) 
-        : tokenData.error;
+        : (tokenData.error_description || tokenData.error);
       console.error("AliExpress token exchange failed:", errorMsg);
       return new Response(
         JSON.stringify({ success: false, error: `Token exchange failed: ${errorMsg}` }),
@@ -149,18 +171,26 @@ serve(async (req: Request) => {
     if (!tokenData.access_token) {
       console.error("No access token in response:", tokenData);
       return new Response(
-        JSON.stringify({ success: false, error: "No access token received from AliExpress" }),
+        JSON.stringify({ success: false, error: "No access token received from AliExpress", response: tokenData }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
     console.log("Access token received successfully!");
-    console.log("Account:", tokenData.account);
+    console.log("Account:", tokenData.account || tokenData.user_nick);
     console.log("Expires in:", tokenData.expires_in, "seconds");
+    console.log("Refresh token valid for:", tokenData.refresh_token_valid_time, "seconds");
 
-    // Delete existing tokens first
+    // Delete existing tokens first to avoid duplicates
     console.log("Removing existing tokens...");
     await supabaseClient.from("settings").delete().eq("key", "aliexpress_tokens");
+
+    // Calculate expiry timestamps
+    const now = new Date();
+    const accessTokenExpiresAt = new Date(now.getTime() + (tokenData.expires_in * 1000));
+    const refreshTokenExpiresAt = tokenData.refresh_token_valid_time 
+      ? new Date(now.getTime() + (tokenData.refresh_token_valid_time * 1000))
+      : null;
 
     // Save new tokens to database
     console.log("Saving new tokens to database...");
@@ -170,12 +200,15 @@ serve(async (req: Request) => {
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
         expires_in: tokenData.expires_in,
+        access_token_expires_at: accessTokenExpiresAt.toISOString(),
         refresh_token_valid_time: tokenData.refresh_token_valid_time,
+        refresh_token_expires_at: refreshTokenExpiresAt?.toISOString() || null,
         account: tokenData.account,
         account_id: tokenData.account_id,
         seller_id: tokenData.seller_id,
         user_nick: tokenData.user_nick,
-        updated_at: new Date().toISOString(),
+        sp: tokenData.sp,
+        updated_at: now.toISOString(),
       },
       description: `Connected to AliExpress Account: ${tokenData.account || tokenData.user_nick || "Unknown"}`,
     });
@@ -183,7 +216,7 @@ serve(async (req: Request) => {
     if (saveError) {
       console.error("Failed to save tokens:", saveError);
       return new Response(
-        JSON.stringify({ success: false, error: "Failed to save tokens to database" }),
+        JSON.stringify({ success: false, error: `Failed to save tokens to database: ${saveError.message}` }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
@@ -196,6 +229,7 @@ serve(async (req: Request) => {
         success: true,
         status: "connected",
         account: tokenData.account || tokenData.user_nick || "Connected",
+        expires_in: tokenData.expires_in,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
