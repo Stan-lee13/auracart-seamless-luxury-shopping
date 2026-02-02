@@ -1,8 +1,10 @@
 // Vercel Serverless Function - AliExpress OAuth Callback Handler
-// This endpoint handles the OAuth callback from AliExpress
+// This endpoint receives the OAuth redirect from AliExpress,
+// forwards the code to Supabase edge function for token exchange,
+// then redirects the user back to the admin page.
 
 export default async function handler(req, res) {
-  console.log('=== AliExpress OAuth Callback Started ===');
+  console.log('=== AliExpress OAuth Callback (Vercel) ===');
   console.log('Method:', req.method);
   console.log('Query params:', JSON.stringify(req.query));
   
@@ -30,33 +32,28 @@ export default async function handler(req, res) {
   console.log('State parameter:', state);
 
   try {
-    // Get environment variables
-    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    // Get Supabase URL from environment
+    const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://mnuppunshelyjezumqtr.supabase.co';
+    const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1udXBwdW5zaGVseWplenVtcXRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwMDIzMTMsImV4cCI6MjA4MzU3ODMxM30.qOC2GflroSBuBG7_nHjfsdnivkKdxEmJ2v56rTFUy2k';
     
-    console.log('Environment check:', { 
-      supabaseUrl: supabaseUrl ? 'present' : 'missing',
-      supabaseAnonKey: supabaseAnonKey ? 'present' : 'missing'
-    });
+    console.log('Using Supabase URL:', supabaseUrl);
     
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error('Missing Supabase environment variables');
-      return res.redirect(`/admin/suppliers?status=error&error=${encodeURIComponent('Server configuration error - missing Supabase credentials')}&timestamp=${Date.now()}`);
-    }
-    
-    // Call the Supabase edge function to exchange the code for tokens
+    // Forward to Supabase edge function via POST with code in body
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/aliexpress-auth-callback`;
     console.log('Calling edge function:', edgeFunctionUrl);
     
-    // Pass code and state as query parameters (GET request to edge function)
-    const callbackUrl = `${edgeFunctionUrl}?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || 'https://auracartcom.vercel.app')}`;
-    
-    const response = await fetch(callbackUrl, {
-      method: 'GET',
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${supabaseAnonKey}`,
-        'Content-Type': 'application/json'
-      }
+        'Content-Type': 'application/json',
+        'apikey': supabaseAnonKey,
+      },
+      body: JSON.stringify({
+        code: code,
+        state: state || 'https://auracartcom.vercel.app',
+        redirect_uri: 'https://auracartcom.vercel.app/api/aliexpress/callback'
+      })
     });
 
     console.log('Edge function response status:', response.status);
