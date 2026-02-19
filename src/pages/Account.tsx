@@ -155,7 +155,7 @@ export default function Account() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Link
-                    to="/account/change-password"
+                    to="/reset-password"
                     className="flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors"
                   >
                     <div className="flex items-center gap-3">
@@ -189,12 +189,12 @@ export default function Account() {
               <CardContent>
                 <div className="text-center py-12">
                   <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="font-medium mb-2">No orders yet</h3>
+                  <h3 className="font-medium mb-2">View all orders</h3>
                   <p className="text-muted-foreground text-sm mb-4">
-                    When you place orders, they will appear here.
+                    Track and manage your orders from the dedicated page.
                   </p>
                   <Button asChild>
-                    <Link to="/shop">Start Shopping</Link>
+                    <Link to="/orders">View Orders</Link>
                   </Button>
                 </div>
               </CardContent>
