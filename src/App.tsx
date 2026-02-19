@@ -20,6 +20,10 @@ import Account from "./pages/Account";
 import Checkout from "./pages/Checkout";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import Wishlist from "./pages/Wishlist";
+import StaticPage from "./pages/StaticPage";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminOrders from "./pages/AdminOrders";
 import AdminRefunds from "./pages/AdminRefunds";
@@ -41,7 +45,6 @@ function AuthAwareRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Logged-in users go to shop, logged-out users see landing
   if (user) {
     return <Navigate to="/shop" replace />;
   }
@@ -49,7 +52,7 @@ function AuthAwareRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Protected route - requires auth for checkout/orders
+// Protected route - requires auth
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
@@ -72,50 +75,42 @@ function AppRoutes() {
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
-      {/* Search bar under navbar for logged-in users on shop pages */}
       <SearchFiltersBar />
       <main className="flex-1 pt-16 md:pt-20 pb-20 md:pb-0">
         <Routes>
-          {/* Landing page - only for logged-out users */}
-          <Route path="/" element={
-            <AuthAwareRoute>
-              <Landing />
-            </AuthAwareRoute>
-          } />
+          {/* Landing */}
+          <Route path="/" element={<AuthAwareRoute><Landing /></AuthAwareRoute>} />
 
-          {/* Shop & Product Routes - public browsing */}
+          {/* Public */}
           <Route path="/shop" element={<Shop />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/product/:slug" element={<Product />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/search" element={<Shop />} />
+          <Route path="/wishlist" element={<Wishlist />} />
 
           {/* Auth */}
           <Route path="/auth" element={<Auth />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-          {/* Protected Routes - require login to buy */}
-          <Route path="/checkout" element={
-            <ProtectedRoute>
-              <Checkout />
-            </ProtectedRoute>
-          } />
-          <Route path="/orders" element={
-            <ProtectedRoute>
-              <Orders />
-            </ProtectedRoute>
-          } />
-          <Route path="/order/:id" element={
-            <ProtectedRoute>
-              <OrderDetail />
-            </ProtectedRoute>
-          } />
-          <Route path="/account" element={
-            <ProtectedRoute>
-              <Account />
-            </ProtectedRoute>
-          } />
+          {/* Static pages */}
+          <Route path="/contact" element={<StaticPage />} />
+          <Route path="/faq" element={<StaticPage />} />
+          <Route path="/shipping" element={<StaticPage />} />
+          <Route path="/returns" element={<StaticPage />} />
+          <Route path="/track-order" element={<StaticPage />} />
+          <Route path="/about" element={<StaticPage />} />
+          <Route path="/privacy" element={<StaticPage />} />
+          <Route path="/terms" element={<StaticPage />} />
 
-          {/* Admin Routes - protected by AdminLayout */}
+          {/* Protected */}
+          <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/order/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>} />
+
+          {/* Admin */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/orders" replace />} />
             <Route path="orders" element={<AdminOrders />} />

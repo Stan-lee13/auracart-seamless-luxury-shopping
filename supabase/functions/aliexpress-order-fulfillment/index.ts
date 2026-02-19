@@ -50,44 +50,62 @@ serve(async (req: Request) => {
         const { orderId } = await req.json();
 
         // 1. Get Order and Tokens
-        const { data: order } = await supabaseClient.from('orders').select('*, order_items(*)').eq('id', orderId).single();
+        const { data: order, error: orderErr } = await supabaseClient
+            .from('orders')
+            .select('*, order_items(*)')
+            .eq('id', orderId)
+            .single();
+
+        if (orderErr || !order) throw new Error("Order not found: " + (orderErr?.message || orderId));
+
         const { data: aliTokens } = await supabaseClient.from('settings').select('value').eq('key', 'aliexpress_tokens').single();
         const { data: aliConfig } = await supabaseClient.from('settings').select('value').eq('key', 'aliexpress_config').single();
 
-        const accessToken = aliTokens?.value?.access_token;
-        const appKey = aliConfig?.value?.app_key || Deno.env.get("ALIEXPRESS_APP_KEY");
-        const appSecret = aliConfig?.value?.app_secret || Deno.env.get("ALIEXPRESS_APP_SECRET");
+        const tokenValue = aliTokens?.value as Record<string, unknown> | null;
+        const configValue = aliConfig?.value as Record<string, unknown> | null;
+        
+        const accessToken = typeof tokenValue?.access_token === 'string' ? tokenValue.access_token : undefined;
+        const appKey = (typeof configValue?.app_key === 'string' ? configValue.app_key : undefined) || Deno.env.get("ALIEXPRESS_APP_KEY");
+        const appSecret = (typeof configValue?.app_secret === 'string' ? configValue.app_secret : undefined) || Deno.env.get("ALIEXPRESS_APP_SECRET");
 
-        if (!order || !accessToken || !appKey) throw new Error("Order or Integration not found.");
+        if (!accessToken || !appKey || !appSecret) throw new Error("AliExpress integration not configured. Missing tokens or keys.");
 
-        const addr = order.shipping_address;
+        const addr = order.shipping_address as Record<string, unknown>;
 
-        // 2. Map Items (We need the original aliexpress IDs stored in product metadata)
+        // 2. Map Items using aliexpress_product_id from products table
         const productItems = [];
-        for (const item of order.order_items) {
-            const { data: product } = await supabaseClient.from('products').select('metadata').eq('id', item.product_id).single();
-            const aliId = product?.metadata?.aliexpress_id;
+        for (const item of (order.order_items || [])) {
+            if (!item.product_id) continue;
+            
+            const { data: product } = await supabaseClient
+                .from('products')
+                .select('aliexpress_product_id')
+                .eq('id', item.product_id)
+                .single();
+
+            const aliId = product?.aliexpress_product_id;
 
             if (aliId) {
                 productItems.push({
                     product_id: parseInt(aliId),
                     product_count: item.quantity,
-                    // Optional: logistics_service_name: "AliExpress Selection Standard"
                 });
             }
         }
 
         if (productItems.length === 0) {
-            return new Response(JSON.stringify({ message: "No AliExpress products in order." }), { headers: corsHeaders });
+            return new Response(JSON.stringify({ message: "No AliExpress products in order." }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
         }
 
-        // 3. Construct PlaceOrderRequest4OpenApiDto
+        // 3. Construct PlaceOrderRequest
         const orderRequest = {
             logistics_address: {
-                contact_person: addr.full_name,
-                address: addr.street_address,
-                city: addr.city,
-                province: addr.state,
+                contact_person: addr.full_name || '',
+                address: addr.street_address || '',
+                city: addr.city || '',
+                province: addr.state || '',
                 country: addr.country || 'NG',
                 mobile_no: addr.phone || '',
                 zip: addr.postal_code || ''
@@ -101,20 +119,28 @@ serve(async (req: Request) => {
         }, appKey, appSecret, accessToken);
 
         if (result.is_success) {
-            // Store AliExpress Order IDs in our system
+            const aliOrderIds = result.order_list?.number_list || [];
+            
+            // Update order with AliExpress order ID
             await supabaseClient.from('orders').update({
-                aliexpress_order_ids: result.order_list.number_list,
-                fulfillment_status: 'fulfilled'
+                aliexpress_order_id: aliOrderIds.join(','),
+                status: 'sent_to_supplier',
+                sent_to_supplier_at: new Date().toISOString(),
             }).eq('id', orderId);
 
-            return new Response(JSON.stringify({ success: true, ali_orders: result.order_list.number_list }), { headers: corsHeaders });
+            return new Response(JSON.stringify({ success: true, ali_orders: aliOrderIds }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
         } else {
-            throw new Error(`AliExpress Order Placement Failed: ${result.error_msg}`);
+            throw new Error(`AliExpress Order Failed: ${result.error_msg || JSON.stringify(result)}`);
         }
 
     } catch (err: unknown) {
         console.error("Order Fulfillment Error:", err);
         const message = err instanceof Error ? err.message : "Unknown Error";
-        return new Response(JSON.stringify({ error: message }), { headers: corsHeaders, status: 500 });
+        return new Response(JSON.stringify({ error: message }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 500,
+        });
     }
 });
