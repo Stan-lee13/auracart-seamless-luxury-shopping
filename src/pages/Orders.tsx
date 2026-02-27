@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package, RefreshCw, Eye, ShoppingBag } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 
 export default function Orders() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [orders, setOrders] = React.useState<any[]>([]);
+  const [orders, setOrders] = React.useState<Tables<'orders'>[]>([]);
   const [loading, setLoading] = React.useState(false);
 
   async function load() {

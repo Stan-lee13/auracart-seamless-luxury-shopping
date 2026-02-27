@@ -55,9 +55,10 @@ serve(async (req: Request) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
 
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error("Fix Permissions Error:", err);
-        return new Response(JSON.stringify({ error: err.message }), {
+        const message = err instanceof Error ? err.message : 'Unknown error';
+        return new Response(JSON.stringify({ error: message }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 400
         });

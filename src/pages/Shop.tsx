@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Grid3X3, List, Loader2, Sparkles } from 'lucide-react';
 import { useInfiniteProducts, useTrendingProducts, useNewArrivals, useRecommendedProducts } from '@/hooks/useInfiniteProducts';
 import { useProducts, useCategories } from '@/hooks/useProducts';
@@ -130,6 +129,7 @@ export default function Shop() {
                 size="icon"
                 onClick={() => setViewMode('grid')}
                 className="hidden sm:flex"
+                aria-label="Grid view"
               >
                 <Grid3X3 className="h-4 w-4" />
               </Button>
@@ -138,6 +138,7 @@ export default function Shop() {
                 size="icon"
                 onClick={() => setViewMode('list')}
                 className="hidden sm:flex"
+                aria-label="List view"
               >
                 <List className="h-4 w-4" />
               </Button>

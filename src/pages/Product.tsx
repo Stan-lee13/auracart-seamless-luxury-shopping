@@ -287,7 +287,7 @@ export default function Product() {
             </TabsContent>
             <TabsContent value="details" className="pb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4">
-                {Object.entries((product as any).metadata || {}).map(([key, value]) => (
+                {Object.entries((product.metadata as Record<string, unknown> | null) || {}).map(([key, value]) => (
                   <div key={key} className="flex justify-between py-2 border-b border-border">
                     <span className="text-muted-foreground capitalize">{key.replace('_', ' ')}</span>
                     <span className="font-medium">{String(value)}</span>

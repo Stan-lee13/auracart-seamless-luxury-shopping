@@ -47,8 +47,8 @@ export default function Auth() {
         toast.success('Account created! Please check your email to verify.');
       }
       navigate(redirect);
-    } catch (error: any) {
-      toast.error(error.message || 'An error occurred');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -63,8 +63,8 @@ export default function Auth() {
         },
       });
       if (error) throw error;
-    } catch (error: any) {
-      toast.error(error.message || 'Google sign-in failed');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Google sign-in failed');
     }
   };
 

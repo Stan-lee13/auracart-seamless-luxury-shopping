@@ -6,12 +6,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { RefreshCw, AlertTriangle, X, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
 export default function AdminDisputes() {
-  const [disputes, setDisputes] = useState<any[]>([]);
+  const [disputes, setDisputes] = useState<Tables<'disputes'>[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedDispute, setSelectedDispute] = useState<any>(null);
+  const [selectedDispute, setSelectedDispute] = useState<Tables<'disputes'> | null>(null);
   const [newEvidence, setNewEvidence] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -151,7 +152,7 @@ export default function AdminDisputes() {
               <h3 className="font-semibold mb-4">Evidence</h3>
               {evidenceEntries.length > 0 && (
                 <div className="space-y-2 mb-6">
-                  {evidenceEntries.map((ev: any, i: number) => (
+                  {evidenceEntries.map((ev: { description?: string; submitted_at?: string }, i: number) => (
                     <div key={i} className="border border-border rounded-lg p-3 bg-muted/50">
                       <p className="text-sm">{ev.description}</p>
                       <p className="text-xs text-muted-foreground mt-1">{ev.submitted_at ? new Date(ev.submitted_at).toLocaleString() : ''}</p>

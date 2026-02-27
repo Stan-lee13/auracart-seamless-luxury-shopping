@@ -142,9 +142,9 @@ export function ProductCard({ product, className }: ProductCardProps) {
             <p className="font-semibold text-primary">
               {formatCurrency(product.customer_price)}
             </p>
-            {(product as any).metadata?.discount && (
+            {(product.metadata as Record<string, unknown> | null)?.discount && (
               <p className="text-[10px] line-through text-muted-foreground">
-                {(product as any).metadata.original_price}
+                {String((product.metadata as Record<string, unknown>).original_price ?? '')}
               </p>
             )}
           </div>
