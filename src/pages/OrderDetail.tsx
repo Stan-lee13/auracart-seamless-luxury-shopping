@@ -7,13 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Clock, Package, Truck, CheckCircle2, ImageIcon, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 
 export default function OrderDetail() {
   const { id } = useParams();
   const { user, isLoading: authLoading } = useAuth();
-  const [order, setOrder] = React.useState<any>(null);
-  const [items, setItems] = React.useState<any[]>([]);
-  const [tx, setTx] = React.useState<any>(null);
+  const [order, setOrder] = React.useState<Tables<'orders'> | null>(null);
+  const [items, setItems] = React.useState<Tables<'order_items'>[]>([]);
+  const [tx, setTx] = React.useState<Pick<Tables<'transactions'>, 'status' | 'payment_method' | 'created_at' | 'payment_channel'> | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -85,7 +86,7 @@ export default function OrderDetail() {
     );
   }
 
-  const shippingAddress = order.shipping_address as any;
+  const shippingAddress = (order.shipping_address as Record<string, string> | null) ?? null;
 
   const getStatusColor = (status?: string) => {
     const colors: Record<string, string> = {

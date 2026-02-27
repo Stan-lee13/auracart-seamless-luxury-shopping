@@ -5,12 +5,13 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RefreshCw, RefreshCcw, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
 export default function AdminRefunds() {
-  const [refunds, setRefunds] = useState<any[]>([]);
+  const [refunds, setRefunds] = useState<Tables<'refunds'>[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedRefund, setSelectedRefund] = useState<any>(null);
+  const [selectedRefund, setSelectedRefund] = useState<Tables<'refunds'> | null>(null);
 
   async function fetchRefunds() {
     setLoading(true);
@@ -36,7 +37,7 @@ export default function AdminRefunds() {
     try {
       const { error } = await supabase
         .from('refunds')
-        .update({ status: 'processing' as any })
+        .update({ status: 'processing' })
         .eq('id', refundId);
 
       if (error) throw error;

@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RefreshCw, Truck, ExternalLink, Download, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 
 export default function AdminSuppliers() {
-  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<Tables<'suppliers'>[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAliConnected, setIsAliConnected] = useState<boolean | null>(null);
   const [isImporting, setIsImporting] = useState(false);
