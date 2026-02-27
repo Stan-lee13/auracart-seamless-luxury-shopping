@@ -23,18 +23,23 @@ serve(async (req: Request) => {
     const signature = req.headers.get("x-paystack-signature");
     const body = await req.text();
 
-    if (signature) {
-      const hash = createHmac("sha512", PAYSTACK_SECRET)
-        .update(body)
-        .digest("hex");
+    if (!signature) {
+      return new Response(
+        JSON.stringify({ error: "Missing signature" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
+    }
 
-      if (hash !== signature) {
-        console.error("Invalid webhook signature");
-        return new Response(
-          JSON.stringify({ error: "Invalid signature" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
-        );
-      }
+    const hash = createHmac("sha512", PAYSTACK_SECRET)
+      .update(body)
+      .digest("hex");
+
+    if (hash !== signature) {
+      console.error("Invalid webhook signature");
+      return new Response(
+        JSON.stringify({ error: "Invalid signature" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 401 }
+      );
     }
 
     const event = JSON.parse(body);

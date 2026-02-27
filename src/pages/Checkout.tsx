@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ShieldCheck, CreditCard, Package, Loader2, Image as ImageIcon } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -33,6 +34,31 @@ export default function Checkout() {
     if (profile?.phone) setPhone(profile.phone);
   }, [user, profile]);
 
+
+  useEffect(() => {
+    if (!user) return;
+
+    const loadDefaultAddress = async () => {
+      const { data } = await supabase
+        .from('addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('is_default', true)
+        .maybeSingle();
+
+      if (data) {
+        setFullName((prev) => prev || data.full_name);
+        setPhone((prev) => prev || data.phone);
+        setStreetAddress((prev) => prev || data.street_address);
+        setCity((prev) => prev || data.city);
+        setState((prev) => prev || data.state);
+        setPostalCode((prev) => prev || data.postal_code || '');
+      }
+    };
+
+    void loadDefaultAddress();
+  }, [user]);
+
   // Calculate totals
   const subtotal = cart.subtotal;
   const shipping = subtotal > 50000 ? 0 : 2500; // Free shipping over ₦50,000
@@ -49,18 +75,47 @@ export default function Checkout() {
 
     setLoading(true);
     try {
+      const shippingAddress = {
+        full_name: fullName,
+        phone,
+        street_address: streetAddress,
+        city,
+        state,
+        postal_code: postalCode,
+        country: 'Nigeria',
+      };
+
+      if (user) {
+        await supabase
+          .from('addresses')
+          .update({ is_default: false })
+          .eq('user_id', user.id)
+          .eq('is_default', true);
+
+        const { error: addressError } = await supabase
+          .from('addresses')
+          .insert({
+            user_id: user.id,
+            full_name: shippingAddress.full_name,
+            phone: shippingAddress.phone,
+            street_address: shippingAddress.street_address,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            postal_code: shippingAddress.postal_code,
+            country: shippingAddress.country,
+            is_default: true,
+            label: 'Checkout Address',
+          });
+
+        if (addressError) {
+          console.warn('Unable to save checkout address:', addressError.message);
+        }
+      }
+
       const payload = {
         email,
         amount: total,
-        shipping_address: {
-          full_name: fullName,
-          phone,
-          street_address: streetAddress,
-          city,
-          state,
-          postal_code: postalCode,
-          country: 'Nigeria',
-        },
+        shipping_address: shippingAddress,
         line_items: cart.items.map(item => ({
           product_name: item.name,
           variant_name: item.variantName,
@@ -74,7 +129,6 @@ export default function Checkout() {
       };
 
       // Call edge function
-      const { supabase } = await import('@/integrations/supabase/client');
       const { data: resData, error: fnError } = await supabase.functions.invoke('create-charge', {
         body: payload,
       });

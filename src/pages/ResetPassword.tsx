@@ -45,8 +45,8 @@ export default function ResetPassword() {
       if (error) throw error;
       toast.success('Password updated successfully!');
       navigate('/shop');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to update password');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update password');
     } finally {
       setIsLoading(false);
     }
