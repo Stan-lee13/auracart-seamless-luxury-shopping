@@ -1,73 +1,72 @@
-# Welcome to your Lovable project
+# AuraCart
 
-## Project info
+A production-grade dropshipping platform integrated with AliExpress and Paystack.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Features
 
-## How can I edit this code?
+- **AI-Powered Product Curation**: Smart recommendations personalized for your customers.
+- **AliExpress Integration**: Seamless product syncing and order fulfillment.
+- **Secure Payments**: Integrated with Paystack for reliable transactions.
+- **Admin Dashboard**: Comprehensive management of orders, refunds, and suppliers.
+- **Global Delivery**: Built for worldwide shipping operations.
 
-There are several ways of editing your application.
+## Technology Stack
 
-**Use Lovable**
+- **Frontend**: Vite, React, TypeScript, Tailwind CSS, shadcn/ui.
+- **Backend**: Supabase (Auth, Database, Edge Functions).
+- **Payments**: Paystack.
+- **Supplier**: AliExpress API.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Getting Started
 
-Changes made via Lovable will be committed automatically to this repo.
+### Prerequisites
 
-**Use your preferred IDE**
+- Node.js & npm
+- Supabase CLI (for local development and deployments)
+- Paystack Account
+- AliExpress Developer Account
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### Installation
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+1. Clone the repository:
+   ```sh
+   git clone <YOUR_GIT_URL>
+   cd <YOUR_PROJECT_NAME>
+   ```
 
-Follow these steps:
+2. Install dependencies:
+   ```sh
+   npm install
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+3. Start the development server:
+   ```sh
+   npm run dev
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+## Deployment
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Edge Functions
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+Deploy the necessary Supabase Edge Functions:
+```bash
+supabase functions deploy create-charge
+supabase functions deploy import-products
+supabase functions deploy aliexpress-auth-callback
+supabase functions deploy verify-payment
+supabase functions deploy paystack-webhook
 ```
 
-**Edit a file directly in GitHub**
+### Environment Variables
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Set the following secrets in your Supabase project:
+- `PAYSTACK_SECRET_KEY`
+- `ALIEXPRESS_APP_KEY`
+- `ALIEXPRESS_APP_SECRET`
 
-**Use GitHub Codespaces**
+## Testing
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Run the test suite with Vitest:
+```bash
+npm test
+```

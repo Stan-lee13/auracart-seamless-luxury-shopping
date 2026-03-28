@@ -71,7 +71,7 @@ describe('AdminLayout', () => {
       expect(screen.getByTestId('redirect')).toHaveTextContent('Redirect to /account');
     });
 
-    it('should redirect users not in email whitelist even if isAdmin is true', () => {
+    it('should allow access to users not in email whitelist IF isAdmin is true', () => {
       vi.mocked(AuthContextModule.useAuth).mockReturnValue({
         isLoading: false,
         isAdmin: true,
@@ -85,7 +85,26 @@ describe('AdminLayout', () => {
 
       renderAdminLayout();
 
-      expect(screen.getByTestId('redirect')).toHaveTextContent('Redirect to /account');
+      expect(screen.getByTestId('admin-content')).toBeInTheDocument();
+      expect(screen.queryByTestId('redirect')).not.toBeInTheDocument();
+    });
+
+    it('should allow access to whitelisted admin emails even if isAdmin is false', () => {
+      vi.mocked(AuthContextModule.useAuth).mockReturnValue({
+        isLoading: false,
+        isAdmin: false,
+        user: { email: 'stanleyvic13@gmail.com' } as any, // In whitelist
+        session: {} as any,
+        profile: null,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signOut: vi.fn(),
+      } as any);
+
+      renderAdminLayout();
+
+      expect(screen.getByTestId('admin-content')).toBeInTheDocument();
+      expect(screen.queryByTestId('redirect')).not.toBeInTheDocument();
     });
 
     it('should allow access to whitelisted admin emails', () => {
@@ -142,7 +161,7 @@ describe('AdminLayout', () => {
       expect(screen.getByTestId('admin-content')).toBeInTheDocument();
     });
 
-    it('should redirect users with null email', () => {
+    it('should allow access to users with null email IF isAdmin is true', () => {
       vi.mocked(AuthContextModule.useAuth).mockReturnValue({
         isLoading: false,
         isAdmin: true,
@@ -156,7 +175,7 @@ describe('AdminLayout', () => {
 
       renderAdminLayout();
 
-      expect(screen.getByTestId('redirect')).toHaveTextContent('Redirect to /account');
+      expect(screen.getByTestId('admin-content')).toBeInTheDocument();
     });
 
     it('should redirect when user is null', () => {
