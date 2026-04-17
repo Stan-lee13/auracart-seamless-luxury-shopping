@@ -40,14 +40,19 @@ export default function AdminDisputes() {
     if (!selectedDispute || !newEvidence.trim()) return;
     setSubmitting(true);
     try {
-      const existingEvidence = selectedDispute.evidence_compiled || {};
-      const entries = Array.isArray(existingEvidence.entries) ? existingEvidence.entries : [];
-      entries.push({ description: newEvidence, submitted_at: new Date().toISOString() });
+      const raw = selectedDispute.evidence_compiled;
+      const existingEvidence: Record<string, unknown> =
+        raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+      const prevEntries = Array.isArray(existingEvidence.entries)
+        ? (existingEvidence.entries as Array<{ description?: string; submitted_at?: string }>)
+        : [];
+      const entries = [...prevEntries, { description: newEvidence, submitted_at: new Date().toISOString() }];
+      const updated = { ...existingEvidence, entries };
 
       const { error } = await supabase
         .from('disputes')
         .update({
-          evidence_compiled: { ...existingEvidence, entries },
+          evidence_compiled: updated,
           evidence_submitted_at: new Date().toISOString(),
         })
         .eq('id', selectedDispute.id);
@@ -55,7 +60,7 @@ export default function AdminDisputes() {
       if (error) throw error;
       toast.success('Evidence added successfully');
       setNewEvidence('');
-      setSelectedDispute({ ...selectedDispute, evidence_compiled: { ...existingEvidence, entries } });
+      setSelectedDispute({ ...selectedDispute, evidence_compiled: updated });
       fetchDisputes();
     } catch (e) {
       console.error('Failed to submit evidence', e);
@@ -75,7 +80,14 @@ export default function AdminDisputes() {
     return colors[status || ''] || 'bg-muted text-muted-foreground';
   };
 
-  const evidenceEntries = selectedDispute?.evidence_compiled?.entries || [];
+  const evidenceRaw = selectedDispute?.evidence_compiled;
+  const evidenceObj: Record<string, unknown> =
+    evidenceRaw && typeof evidenceRaw === 'object' && !Array.isArray(evidenceRaw)
+      ? (evidenceRaw as Record<string, unknown>)
+      : {};
+  const evidenceEntries = Array.isArray(evidenceObj.entries)
+    ? (evidenceObj.entries as Array<{ description?: string; submitted_at?: string }>)
+    : [];
 
   return (
     <div className="space-y-6">
