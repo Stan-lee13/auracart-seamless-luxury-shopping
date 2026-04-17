@@ -109,6 +109,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          aliexpress_id: string | null
           created_at: string
           description: string | null
           display_order: number | null
@@ -121,6 +122,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aliexpress_id?: string | null
           created_at?: string
           description?: string | null
           display_order?: number | null
@@ -133,6 +135,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aliexpress_id?: string | null
           created_at?: string
           description?: string | null
           display_order?: number | null
