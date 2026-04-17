@@ -14,7 +14,11 @@ import { ProductGrid } from '@/components/products/ProductGrid';
 export default function Product() {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, error } = useProduct(slug || '');
-  const { data: relatedProducts = [] } = useProducts({ limit: 4 });
+  const { data: relatedProducts = [] } = useProducts({
+    categoryId: product?.category_id || undefined,
+    excludeId: product?.id,
+    limit: 4,
+  });
   const { addItem } = useCart();
 
   const [selectedImage, setSelectedImage] = useState(0);
@@ -287,12 +291,16 @@ export default function Product() {
             </TabsContent>
             <TabsContent value="details" className="pb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4">
-                {(product.ai_features || []).map((feature, i) => (
-                  <div key={i} className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground">Feature</span>
-                    <span className="font-medium">{feature}</span>
-                  </div>
-                ))}
+                {(product.ai_features || []).length > 0 ? (
+                  (product.ai_features || []).map((feature, i) => (
+                    <div key={i} className="flex justify-between py-2 border-b border-border">
+                      <span className="text-muted-foreground">Highlight</span>
+                      <span className="font-medium text-right">{feature}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground col-span-full">No additional specifications listed.</p>
+                )}
                 <div className="flex justify-between py-2 border-b border-border">
                   <span className="text-muted-foreground">Brand</span>
                   <span className="font-medium">AuraCart Premium</span>
@@ -301,6 +309,12 @@ export default function Product() {
                   <span className="text-muted-foreground">Category</span>
                   <span className="font-medium">{product.category?.name || 'Premium Collection'}</span>
                 </div>
+                {product.stock_quantity != null && (
+                  <div className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Availability</span>
+                    <span className="font-medium">{product.stock_quantity > 0 ? `${product.stock_quantity} in stock` : 'Out of stock'}</span>
+                  </div>
+                )}
               </div>
             </TabsContent>
             <TabsContent value="shipping" className="prose prose-sm max-w-none text-muted-foreground pb-8">

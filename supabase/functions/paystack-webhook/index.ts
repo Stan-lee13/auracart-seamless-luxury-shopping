@@ -112,18 +112,25 @@ serve(async (req: Request) => {
           console.error("Order update error:", orderError);
         }
 
-        // Trigger AliExpress Fulfillment
+        // Decrement inventory + trigger AliExpress fulfillment + send confirmation email
         try {
-          // Fetch the order to get the UUID id (reference is the order_number)
           const { data: order } = await supabaseClient.from("orders").select("id").eq("order_number", reference).single();
           if (order) {
+            // Decrement stock
+            await supabaseClient.rpc('decrement_stock_for_order', { _order_id: order.id });
+
             console.log("Triggering AliExpress fulfillment for order:", order.id);
             await supabaseClient.functions.invoke('aliexpress-order-fulfillment', {
               body: { orderId: order.id }
             });
+
+            // Send confirmation email (non-blocking)
+            supabaseClient.functions.invoke('send-order-email', {
+              body: { orderId: order.id, type: 'confirmation' }
+            }).catch(e => console.error('email send failed:', e));
           }
         } catch (fulfillmentError) {
-          console.error("Fulfillment trigger failed (non-fatal for webhook):", fulfillmentError);
+          console.error("Post-payment automation failed (non-fatal):", fulfillmentError);
         }
 
         console.log("Payment success processed:", reference);

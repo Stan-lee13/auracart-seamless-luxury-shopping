@@ -128,6 +128,10 @@ serve(async (req: Request) => {
                 sent_to_supplier_at: new Date().toISOString(),
             }).eq('id', orderId);
 
+            // Kick off async tracking sync (non-blocking)
+            supabaseClient.functions.invoke('aliexpress-tracking-sync', { body: {} })
+              .catch(err => console.error('tracking sync trigger failed:', err));
+
             return new Response(JSON.stringify({ success: true, ali_orders: aliOrderIds }), {
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });

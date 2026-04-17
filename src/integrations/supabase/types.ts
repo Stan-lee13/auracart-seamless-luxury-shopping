@@ -109,6 +109,7 @@ export type Database = {
       }
       categories: {
         Row: {
+          aliexpress_id: string | null
           created_at: string
           description: string | null
           display_order: number | null
@@ -121,6 +122,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          aliexpress_id?: string | null
           created_at?: string
           description?: string | null
           display_order?: number | null
@@ -133,6 +135,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          aliexpress_id?: string | null
           created_at?: string
           description?: string | null
           display_order?: number | null
@@ -222,6 +225,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      newsletter_subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_active?: boolean
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          source?: string | null
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -942,6 +969,10 @@ export type Database = {
           shipping_cost: number
         }
         Returns: number
+      }
+      decrement_stock_for_order: {
+        Args: { _order_id: string }
+        Returns: undefined
       }
       generate_order_number: { Args: never; Returns: string }
       has_role: {
