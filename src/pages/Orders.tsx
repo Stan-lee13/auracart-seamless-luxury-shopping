@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { BackButton } from '@/components/navigation/BackButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,8 +13,10 @@ import type { Tables } from '@/integrations/supabase/types';
 export default function Orders() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = React.useState<Pick<Tables<'orders'>, 'id' | 'order_number' | 'grand_total' | 'status' | 'created_at' | 'currency'>[]>([]);
   const [loading, setLoading] = React.useState(false);
+  const [verifying, setVerifying] = React.useState(false);
 
   async function load() {
     if (!user) return;
@@ -33,6 +36,33 @@ export default function Orders() {
       setLoading(false);
     }
   }
+
+  // Verify payment when returning from Paystack with ?reference=...
+  React.useEffect(() => {
+    const reference = searchParams.get('reference') || searchParams.get('trxref') || localStorage.getItem('last_order_reference');
+    if (!reference || !user || verifying) return;
+
+    setVerifying(true);
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-payment', { body: { reference } });
+        if (error) throw error;
+        if (data?.verified) {
+          toast.success('Payment confirmed — your order is being prepared.');
+        } else {
+          toast.error('Payment could not be verified. Please contact support if charged.');
+        }
+      } catch (err) {
+        console.error('Verify error:', err);
+      } finally {
+        localStorage.removeItem('last_order_reference');
+        setSearchParams({}, { replace: true });
+        setVerifying(false);
+        load();
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, searchParams.toString()]);
 
   React.useEffect(() => {
     if (user) load();

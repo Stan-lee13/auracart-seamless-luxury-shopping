@@ -4,7 +4,6 @@ import { Minus, Plus, ShoppingBag, Trash2, ArrowRight, ArrowLeft, ImageIcon } fr
 import { useCart } from '@/contexts/CartContext';
 import { formatCurrency } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, subtotal, totalItems, clearCart } = useCart();
@@ -167,15 +166,6 @@ export default function Cart() {
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total</span>
                   <span className="price-display">{formatCurrency(subtotal)}</span>
-                </div>
-              </div>
-
-              {/* Promo Code */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Promo Code</label>
-                <div className="flex gap-2">
-                  <Input placeholder="Enter code" />
-                  <Button variant="outline">Apply</Button>
                 </div>
               </div>
 
