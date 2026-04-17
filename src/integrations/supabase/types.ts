@@ -970,6 +970,10 @@ export type Database = {
         }
         Returns: number
       }
+      decrement_stock_for_order: {
+        Args: { _order_id: string }
+        Returns: undefined
+      }
       generate_order_number: { Args: never; Returns: string }
       has_role: {
         Args: {
