@@ -5,6 +5,7 @@ import { BackButton } from '@/components/navigation/BackButton';
 import {
   LayoutDashboard,
   Package,
+  ShoppingBag,
   RefreshCcw,
   AlertTriangle,
   Truck,
@@ -20,6 +21,7 @@ const ADMIN_EMAILS = [
 
 const adminNavItems = [
   { path: '/admin/orders', label: 'Orders', icon: Package },
+  { path: '/admin/products', label: 'Products', icon: ShoppingBag },
   { path: '/admin/refunds', label: 'Refunds', icon: RefreshCcw },
   { path: '/admin/disputes', label: 'Disputes', icon: AlertTriangle },
   { path: '/admin/suppliers', label: 'Suppliers', icon: Truck },

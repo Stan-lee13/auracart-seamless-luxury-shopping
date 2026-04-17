@@ -26,6 +26,7 @@ import Wishlist from "./pages/Wishlist";
 import StaticPage from "./pages/StaticPage";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminOrders from "./pages/AdminOrders";
+import AdminProducts from "./pages/AdminProducts";
 import AdminRefunds from "./pages/AdminRefunds";
 import AdminDisputes from "./pages/AdminDisputes";
 import AdminSuppliers from "./pages/AdminSuppliers";
@@ -114,6 +115,7 @@ function AppRoutes() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/orders" replace />} />
             <Route path="orders" element={<AdminOrders />} />
+            <Route path="products" element={<AdminProducts />} />
             <Route path="refunds" element={<AdminRefunds />} />
             <Route path="disputes" element={<AdminDisputes />} />
             <Route path="suppliers" element={<AdminSuppliers />} />

@@ -9,6 +9,8 @@ export type Product = Tables<'products'> & {
 
 export function useProducts(options?: {
   categorySlug?: string;
+  categoryId?: string;
+  excludeId?: string;
   featured?: boolean;
   limit?: number;
   search?: string;
@@ -40,6 +42,14 @@ export function useProducts(options?: {
 
       if (options?.categorySlug) {
         query = query.eq('category.slug', options.categorySlug);
+      }
+
+      if (options?.categoryId) {
+        query = query.eq('category_id', options.categoryId);
+      }
+
+      if (options?.excludeId) {
+        query = query.neq('id', options.excludeId);
       }
 
       if (options?.search) {

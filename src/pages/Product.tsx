@@ -14,7 +14,11 @@ import { ProductGrid } from '@/components/products/ProductGrid';
 export default function Product() {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, error } = useProduct(slug || '');
-  const { data: relatedProducts = [] } = useProducts({ limit: 4 });
+  const { data: relatedProducts = [] } = useProducts({
+    categoryId: product?.category_id || undefined,
+    excludeId: product?.id,
+    limit: 4,
+  });
   const { addItem } = useCart();
 
   const [selectedImage, setSelectedImage] = useState(0);
