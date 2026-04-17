@@ -287,10 +287,10 @@ export default function Product() {
             </TabsContent>
             <TabsContent value="details" className="pb-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-4">
-                {Object.entries((product.metadata as Record<string, unknown> | null) || {}).map(([key, value]) => (
-                  <div key={key} className="flex justify-between py-2 border-b border-border">
-                    <span className="text-muted-foreground capitalize">{key.replace('_', ' ')}</span>
-                    <span className="font-medium">{String(value)}</span>
+                {(product.ai_features || []).map((feature, i) => (
+                  <div key={i} className="flex justify-between py-2 border-b border-border">
+                    <span className="text-muted-foreground">Feature</span>
+                    <span className="font-medium">{feature}</span>
                   </div>
                 ))}
                 <div className="flex justify-between py-2 border-b border-border">
@@ -298,8 +298,8 @@ export default function Product() {
                   <span className="font-medium">AuraCart Premium</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-border">
-                  <span className="text-muted-foreground">Material</span>
-                  <span className="font-medium">High Quality Collection</span>
+                  <span className="text-muted-foreground">Category</span>
+                  <span className="font-medium">{product.category?.name || 'Premium Collection'}</span>
                 </div>
               </div>
             </TabsContent>

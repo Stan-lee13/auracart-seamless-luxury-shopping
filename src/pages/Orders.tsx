@@ -12,7 +12,7 @@ import type { Tables } from '@/integrations/supabase/types';
 export default function Orders() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [orders, setOrders] = React.useState<Tables<'orders'>[]>([]);
+  const [orders, setOrders] = React.useState<Pick<Tables<'orders'>, 'id' | 'order_number' | 'grand_total' | 'status' | 'created_at' | 'currency'>[]>([]);
   const [loading, setLoading] = React.useState(false);
 
   async function load() {

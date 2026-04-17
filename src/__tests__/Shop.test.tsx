@@ -51,6 +51,9 @@ describe('Shop Page', () => {
     vi.clearAllMocks();
 
     global.IntersectionObserver = class IntersectionObserver {
+      root = null;
+      rootMargin = '';
+      thresholds = [];
       constructor() {}
       disconnect() {}
       observe() {}
@@ -58,7 +61,7 @@ describe('Shop Page', () => {
         return [];
       }
       unobserve() {}
-    } as typeof IntersectionObserver;
+    } as unknown as typeof IntersectionObserver;
 
     vi.mocked(useInfiniteProductsModule.useInfiniteProducts).mockReturnValue({
       data: { pages: [{ products: [] }] },
