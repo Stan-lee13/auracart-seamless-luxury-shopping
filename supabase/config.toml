@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.fix-admin-permissions]
 verify_jwt = false
+
+[functions.process-refund]
+verify_jwt = false

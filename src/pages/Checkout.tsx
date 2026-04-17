@@ -114,17 +114,11 @@ export default function Checkout() {
 
       const payload = {
         email,
-        amount: total,
         shipping_address: shippingAddress,
         line_items: cart.items.map(item => ({
-          product_name: item.name,
-          variant_name: item.variantName,
-          unit_price: item.price,
-          unit_cost: 0, // Backend will calculate
-          quantity: item.quantity,
           product_id: item.productId,
-          variant_id: item.variantId,
-          product_image: item.image,
+          variant_id: item.variantId || null,
+          quantity: item.quantity,
         }))
       };
 

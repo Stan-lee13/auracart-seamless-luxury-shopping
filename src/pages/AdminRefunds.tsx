@@ -35,17 +35,16 @@ export default function AdminRefunds() {
 
   async function processRefund(refundId: string) {
     try {
-      const { error } = await supabase
-        .from('refunds')
-        .update({ status: 'processing' })
-        .eq('id', refundId);
-
+      const { data, error } = await supabase.functions.invoke('process-refund', {
+        body: { refund_id: refundId },
+      });
       if (error) throw error;
-      toast.success('Refund marked as processing');
+      if (data?.error) throw new Error(data.error);
+      toast.success('Refund processed via Paystack');
       fetchRefunds();
     } catch (e) {
       console.error('Failed to process refund', e);
-      toast.error('Failed to process refund');
+      toast.error(e instanceof Error ? e.message : 'Failed to process refund');
     }
   }
 
