@@ -6,9 +6,6 @@ verify_jwt = false
 [functions.verify-payment]
 verify_jwt = false
 
-[functions.search-products]
-verify_jwt = false
-
 [functions.paystack-webhook]
 verify_jwt = false
 
@@ -27,8 +24,14 @@ verify_jwt = false
 [functions.aliexpress-order-fulfillment]
 verify_jwt = false
 
+[functions.aliexpress-tracking-sync]
+verify_jwt = false
+
 [functions.fix-admin-permissions]
 verify_jwt = false
 
 [functions.process-refund]
+verify_jwt = false
+
+[functions.send-order-email]
 verify_jwt = false
