@@ -32,6 +32,7 @@ import AdminDisputes from "./pages/AdminDisputes";
 import AdminSuppliers from "./pages/AdminSuppliers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import NotFound from "./pages/NotFound";
+import { useViewportRestore } from "@/hooks/useViewportRestore";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  useViewportRestore();
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
