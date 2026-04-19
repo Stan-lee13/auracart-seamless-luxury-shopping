@@ -30,6 +30,7 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminRefunds from "./pages/AdminRefunds";
 import AdminDisputes from "./pages/AdminDisputes";
 import AdminSuppliers from "./pages/AdminSuppliers";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -113,7 +114,8 @@ function AppRoutes() {
 
           {/* Admin */}
           <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="/admin/orders" replace />} />
+            <Route index element={<Navigate to="/admin/analytics" replace />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
             <Route path="orders" element={<AdminOrders />} />
             <Route path="products" element={<AdminProducts />} />
             <Route path="refunds" element={<AdminRefunds />} />
