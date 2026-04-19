@@ -231,11 +231,17 @@ export default function AdminSuppliers() {
 
         <Card className="glass-card border-accent/20 bg-accent/5">
           <CardHeader><CardTitle className="text-lg">Global Catalog</CardTitle><CardDescription>Synchronize real products</CardDescription></CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button onClick={handleImportProducts} disabled={!isAliConnected || isImporting} className="w-full" variant="secondary">
               {isImporting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              {isImporting ? 'Importing...' : 'Sync Catalog'}
+              {isImporting ? 'Importing…' : 'Sync Catalog'}
             </Button>
+            {!isAliConnected && (
+              <p className="text-xs text-muted-foreground">Sync is disabled until AliExpress is connected with a valid token.</p>
+            )}
+            {importMessage && (
+              <p className="text-xs text-muted-foreground break-words">{importMessage}</p>
+            )}
           </CardContent>
         </Card>
       </div>
