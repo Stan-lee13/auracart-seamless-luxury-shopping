@@ -30,6 +30,7 @@ import AdminProducts from "./pages/AdminProducts";
 import AdminRefunds from "./pages/AdminRefunds";
 import AdminDisputes from "./pages/AdminDisputes";
 import AdminSuppliers from "./pages/AdminSuppliers";
+import AdminAnalytics from "./pages/AdminAnalytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
