@@ -11,8 +11,11 @@ import { toast } from 'sonner';
 export default function AdminSuppliers() {
   const [suppliers, setSuppliers] = useState<Tables<'suppliers'>[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isAliConnected, setIsAliConnected] = useState<boolean | null>(null);
+  const [aliStatus, setAliStatus] = useState<'unknown' | 'inactive' | 'active' | 'expired' | 'error'>('unknown');
+  const [aliAccount, setAliAccount] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<string>('');
+  const isAliConnected = aliStatus === 'active';
   const [aliConfig, setAliConfig] = useState<{ appKey: string; appSecret: string }>({ appKey: '', appSecret: '' });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
@@ -50,8 +53,21 @@ export default function AdminSuppliers() {
       const { data, error } = await supabase.from('settings').select('value').eq('key', 'aliexpress_tokens').maybeSingle();
       if (error) throw error;
       const val = data?.value as Record<string, unknown> | null;
-      setIsAliConnected(!!(val && typeof val.access_token === 'string'));
-    } catch { setIsAliConnected(false); }
+      if (!val || typeof val.access_token !== 'string') {
+        setAliStatus('inactive');
+        setAliAccount('');
+        return;
+      }
+      setAliAccount(typeof val.account === 'string' ? val.account : (typeof val.user_nick === 'string' ? val.user_nick : ''));
+      const expiresAt = typeof val.access_token_expires_at === 'string' ? new Date(val.access_token_expires_at) : null;
+      if (expiresAt && expiresAt.getTime() < Date.now()) {
+        setAliStatus('expired');
+      } else {
+        setAliStatus('active');
+      }
+    } catch {
+      setAliStatus('error');
+    }
   }, []);
 
   const fetchSuppliers = React.useCallback(async () => {
@@ -116,12 +132,29 @@ export default function AdminSuppliers() {
 
   const handleImportProducts = async () => {
     setIsImporting(true);
-    toast.info('Starting AliExpress product import...');
+    setImportMessage('Contacting AliExpress…');
+    toast.info('Starting AliExpress product import…');
     try {
-      const { error } = await supabase.functions.invoke('import-products', { body: { limit: 20 } });
-      if (error) throw error;
-      toast.success('Successfully imported AliExpress products!');
-    } catch { toast.error('Failed to import products.'); } finally { setIsImporting(false); }
+      const { data, error } = await supabase.functions.invoke('import-products', { body: { limit: 20 } });
+      if (error) throw new Error(error.message);
+      if (data?.success === false) throw new Error(data.error || 'Import failed');
+      const imported = data?.imported ?? 0;
+      const errs: string[] = data?.errors || [];
+      if (imported > 0) {
+        toast.success(`Imported ${imported} product${imported === 1 ? '' : 's'} from AliExpress.`);
+        setImportMessage(`Last sync: ${imported} imported${errs.length ? `, ${errs.length} errors` : ''}`);
+      } else {
+        const detail = errs[0] ? ` First error: ${errs[0]}` : '';
+        toast.error(`No products imported.${detail}`);
+        setImportMessage(`No products imported.${detail}`);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to import products.';
+      toast.error(msg);
+      setImportMessage(msg);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const currentRedirectUri = typeof window !== 'undefined'
