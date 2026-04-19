@@ -182,18 +182,27 @@ export default function AdminSuppliers() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 mb-4">
-              <div className="flex items-center gap-3">
-                {isAliConnected ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <AlertCircle className="h-5 w-5 text-amber-500" />}
-                <div><p className="font-medium text-sm">Status</p><p className="text-xs text-muted-foreground">{isAliConnected ? 'Connected' : 'Not Connected'}</p></div>
-              </div>
-              <Badge variant="outline" className={isAliConnected ? "bg-green-100 text-green-800 border-green-200" : "bg-amber-100 text-amber-800 border-amber-200"}>
-                {isAliConnected ? 'ACTIVE' : 'INACTIVE'}
-              </Badge>
-            </div>
+            {(() => {
+              const cfg = {
+                active:   { label: 'ACTIVE',   sub: aliAccount ? `Connected as ${aliAccount}` : 'Connected', icon: <CheckCircle2 className="h-5 w-5 text-green-500" />, badge: 'bg-green-100 text-green-800 border-green-200' },
+                expired:  { label: 'EXPIRED',  sub: 'Token expired — please reconnect',                       icon: <AlertCircle className="h-5 w-5 text-amber-500" />,  badge: 'bg-amber-100 text-amber-800 border-amber-200' },
+                error:    { label: 'ERROR',    sub: 'Could not read connection status',                       icon: <AlertCircle className="h-5 w-5 text-red-500" />,    badge: 'bg-red-100 text-red-800 border-red-200' },
+                inactive: { label: 'INACTIVE', sub: 'Not connected',                                          icon: <AlertCircle className="h-5 w-5 text-amber-500" />,  badge: 'bg-amber-100 text-amber-800 border-amber-200' },
+                unknown:  { label: '…',        sub: 'Checking…',                                              icon: <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />, badge: 'bg-muted text-muted-foreground border-border' },
+              }[aliStatus];
+              return (
+                <div className="flex items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 mb-4">
+                  <div className="flex items-center gap-3">
+                    {cfg.icon}
+                    <div><p className="font-medium text-sm">Status</p><p className="text-xs text-muted-foreground">{cfg.sub}</p></div>
+                  </div>
+                  <Badge variant="outline" className={cfg.badge}>{cfg.label}</Badge>
+                </div>
+              );
+            })()}
             <div className="space-y-4">
-              <Button onClick={handleConnectAliExpress} className="w-full btn-luxury" variant={isAliConnected ? "outline" : "default"}>
-                <ExternalLink className="h-4 w-4 mr-2" /> {isAliConnected ? 'Reconnect' : 'Connect AliExpress'}
+              <Button onClick={handleConnectAliExpress} className="w-full btn-luxury" variant={isAliConnected ? 'outline' : 'default'}>
+                <ExternalLink className="h-4 w-4 mr-2" /> {isAliConnected ? 'Reconnect' : (aliStatus === 'expired' ? 'Reconnect (token expired)' : 'Connect AliExpress')}
               </Button>
               <div className="p-3 bg-muted/30 rounded-lg text-[10px] font-mono break-all border border-border">
                 <p className="text-muted-foreground mb-1 uppercase tracking-tighter">Redirect URI:</p>
