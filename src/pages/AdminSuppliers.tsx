@@ -11,8 +11,11 @@ import { toast } from 'sonner';
 export default function AdminSuppliers() {
   const [suppliers, setSuppliers] = useState<Tables<'suppliers'>[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isAliConnected, setIsAliConnected] = useState<boolean | null>(null);
+  const [aliStatus, setAliStatus] = useState<'unknown' | 'inactive' | 'active' | 'expired' | 'error'>('unknown');
+  const [aliAccount, setAliAccount] = useState<string>('');
   const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<string>('');
+  const isAliConnected = aliStatus === 'active';
   const [aliConfig, setAliConfig] = useState<{ appKey: string; appSecret: string }>({ appKey: '', appSecret: '' });
   const [isSavingConfig, setIsSavingConfig] = useState(false);
 
@@ -50,8 +53,21 @@ export default function AdminSuppliers() {
       const { data, error } = await supabase.from('settings').select('value').eq('key', 'aliexpress_tokens').maybeSingle();
       if (error) throw error;
       const val = data?.value as Record<string, unknown> | null;
-      setIsAliConnected(!!(val && typeof val.access_token === 'string'));
-    } catch { setIsAliConnected(false); }
+      if (!val || typeof val.access_token !== 'string') {
+        setAliStatus('inactive');
+        setAliAccount('');
+        return;
+      }
+      setAliAccount(typeof val.account === 'string' ? val.account : (typeof val.user_nick === 'string' ? val.user_nick : ''));
+      const expiresAt = typeof val.access_token_expires_at === 'string' ? new Date(val.access_token_expires_at) : null;
+      if (expiresAt && expiresAt.getTime() < Date.now()) {
+        setAliStatus('expired');
+      } else {
+        setAliStatus('active');
+      }
+    } catch {
+      setAliStatus('error');
+    }
   }, []);
 
   const fetchSuppliers = React.useCallback(async () => {
@@ -116,12 +132,29 @@ export default function AdminSuppliers() {
 
   const handleImportProducts = async () => {
     setIsImporting(true);
-    toast.info('Starting AliExpress product import...');
+    setImportMessage('Contacting AliExpress…');
+    toast.info('Starting AliExpress product import…');
     try {
-      const { error } = await supabase.functions.invoke('import-products', { body: { limit: 20 } });
-      if (error) throw error;
-      toast.success('Successfully imported AliExpress products!');
-    } catch { toast.error('Failed to import products.'); } finally { setIsImporting(false); }
+      const { data, error } = await supabase.functions.invoke('import-products', { body: { limit: 20 } });
+      if (error) throw new Error(error.message);
+      if (data?.success === false) throw new Error(data.error || 'Import failed');
+      const imported = data?.imported ?? 0;
+      const errs: string[] = data?.errors || [];
+      if (imported > 0) {
+        toast.success(`Imported ${imported} product${imported === 1 ? '' : 's'} from AliExpress.`);
+        setImportMessage(`Last sync: ${imported} imported${errs.length ? `, ${errs.length} errors` : ''}`);
+      } else {
+        const detail = errs[0] ? ` First error: ${errs[0]}` : '';
+        toast.error(`No products imported.${detail}`);
+        setImportMessage(`No products imported.${detail}`);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Failed to import products.';
+      toast.error(msg);
+      setImportMessage(msg);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const currentRedirectUri = typeof window !== 'undefined'
@@ -149,18 +182,27 @@ export default function AdminSuppliers() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 mb-4">
-              <div className="flex items-center gap-3">
-                {isAliConnected ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <AlertCircle className="h-5 w-5 text-amber-500" />}
-                <div><p className="font-medium text-sm">Status</p><p className="text-xs text-muted-foreground">{isAliConnected ? 'Connected' : 'Not Connected'}</p></div>
-              </div>
-              <Badge variant="outline" className={isAliConnected ? "bg-green-100 text-green-800 border-green-200" : "bg-amber-100 text-amber-800 border-amber-200"}>
-                {isAliConnected ? 'ACTIVE' : 'INACTIVE'}
-              </Badge>
-            </div>
+            {(() => {
+              const cfg = {
+                active:   { label: 'ACTIVE',   sub: aliAccount ? `Connected as ${aliAccount}` : 'Connected', icon: <CheckCircle2 className="h-5 w-5 text-green-500" />, badge: 'bg-green-100 text-green-800 border-green-200' },
+                expired:  { label: 'EXPIRED',  sub: 'Token expired — please reconnect',                       icon: <AlertCircle className="h-5 w-5 text-amber-500" />,  badge: 'bg-amber-100 text-amber-800 border-amber-200' },
+                error:    { label: 'ERROR',    sub: 'Could not read connection status',                       icon: <AlertCircle className="h-5 w-5 text-red-500" />,    badge: 'bg-red-100 text-red-800 border-red-200' },
+                inactive: { label: 'INACTIVE', sub: 'Not connected',                                          icon: <AlertCircle className="h-5 w-5 text-amber-500" />,  badge: 'bg-amber-100 text-amber-800 border-amber-200' },
+                unknown:  { label: '…',        sub: 'Checking…',                                              icon: <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />, badge: 'bg-muted text-muted-foreground border-border' },
+              }[aliStatus];
+              return (
+                <div className="flex items-center justify-between p-4 bg-white/40 dark:bg-white/5 rounded-xl border border-white/60 dark:border-white/10 mb-4">
+                  <div className="flex items-center gap-3">
+                    {cfg.icon}
+                    <div><p className="font-medium text-sm">Status</p><p className="text-xs text-muted-foreground">{cfg.sub}</p></div>
+                  </div>
+                  <Badge variant="outline" className={cfg.badge}>{cfg.label}</Badge>
+                </div>
+              );
+            })()}
             <div className="space-y-4">
-              <Button onClick={handleConnectAliExpress} className="w-full btn-luxury" variant={isAliConnected ? "outline" : "default"}>
-                <ExternalLink className="h-4 w-4 mr-2" /> {isAliConnected ? 'Reconnect' : 'Connect AliExpress'}
+              <Button onClick={handleConnectAliExpress} className="w-full btn-luxury" variant={isAliConnected ? 'outline' : 'default'}>
+                <ExternalLink className="h-4 w-4 mr-2" /> {isAliConnected ? 'Reconnect' : (aliStatus === 'expired' ? 'Reconnect (token expired)' : 'Connect AliExpress')}
               </Button>
               <div className="p-3 bg-muted/30 rounded-lg text-[10px] font-mono break-all border border-border">
                 <p className="text-muted-foreground mb-1 uppercase tracking-tighter">Redirect URI:</p>
@@ -189,11 +231,17 @@ export default function AdminSuppliers() {
 
         <Card className="glass-card border-accent/20 bg-accent/5">
           <CardHeader><CardTitle className="text-lg">Global Catalog</CardTitle><CardDescription>Synchronize real products</CardDescription></CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button onClick={handleImportProducts} disabled={!isAliConnected || isImporting} className="w-full" variant="secondary">
               {isImporting ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
-              {isImporting ? 'Importing...' : 'Sync Catalog'}
+              {isImporting ? 'Importing…' : 'Sync Catalog'}
             </Button>
+            {!isAliConnected && (
+              <p className="text-xs text-muted-foreground">Sync is disabled until AliExpress is connected with a valid token.</p>
+            )}
+            {importMessage && (
+              <p className="text-xs text-muted-foreground break-words">{importMessage}</p>
+            )}
           </CardContent>
         </Card>
       </div>

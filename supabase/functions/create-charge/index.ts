@@ -171,8 +171,16 @@ serve(async (req) => {
     });
 
     const paystackData = await paystackResponse.json();
-    if (!paystackData.status) {
-      throw new Error(paystackData.message || "Failed to initialize payment");
+    if (!paystackResponse.ok || !paystackData.status) {
+      const paystackMsg = paystackData?.message || paystackData?.data?.message || "Failed to initialize payment";
+      // Detect the most common misconfiguration: bad/placeholder secret key.
+      if (typeof paystackMsg === "string" && /Authorization Bearer|Invalid key|No authorization/i.test(paystackMsg)) {
+        throw new Error(
+          "Paystack rejected the request: the PAYSTACK_SECRET_KEY configured in Supabase is invalid or a placeholder. " +
+          "Open Supabase → Edge Functions → Secrets and paste your real secret key (starts with sk_test_ or sk_live_), no brackets, no quotes."
+        );
+      }
+      throw new Error(`Paystack: ${paystackMsg}`);
     }
 
     // Create order
