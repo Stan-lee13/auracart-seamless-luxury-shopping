@@ -106,6 +106,9 @@ export default function AdminSuppliers() {
 
   const handleConnectAliExpress = () => {
     if (!aliConfig.appKey) { toast.error('Save your AliExpress App Key first.'); return; }
+    // Persist viewport mode so we restore it after returning from AliExpress
+    const isMobile = window.innerWidth < 768;
+    localStorage.setItem('userDeviceMode', isMobile ? 'mobile' : 'desktop');
     const redirectUri = `${window.location.origin}/api/aliexpress/callback`;
     const state = encodeURIComponent(window.location.origin);
     window.location.href = `https://api-sg.aliexpress.com/oauth/authorize?response_type=code&client_id=${aliConfig.appKey}&redirect_uri=${encodeURIComponent(redirectUri)}&sp=ae&state=${state}`;
@@ -121,7 +124,9 @@ export default function AdminSuppliers() {
     } catch { toast.error('Failed to import products.'); } finally { setIsImporting(false); }
   };
 
-  const currentRedirectUri = `https://auracartcom.vercel.app/api/aliexpress/callback`;
+  const currentRedirectUri = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/aliexpress/callback`
+    : 'https://auracart-com.lovable.app/api/aliexpress/callback';
 
   return (
     <div className="space-y-6 pb-20">

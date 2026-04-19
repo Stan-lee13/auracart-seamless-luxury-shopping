@@ -6,7 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PRODUCTION_REDIRECT_URI = "https://auracartcom.vercel.app/api/aliexpress/callback";
+// Default redirect URI — overridden by the caller's `redirect_uri` body field.
+// IMPORTANT: this must match the redirect_uri used during the initial authorize step.
+const DEFAULT_REDIRECT_URI = "https://auracart-com.lovable.app/api/aliexpress/callback";
 
 serve(async (req: Request) => {
   console.log("=== AliExpress Auth Callback Edge Function ===");
@@ -21,7 +23,7 @@ serve(async (req: Request) => {
   try {
     let code: string | null = null;
     let state: string | null = null;
-    let redirectUri: string = PRODUCTION_REDIRECT_URI;
+    let redirectUri: string = DEFAULT_REDIRECT_URI;
 
     // Support both GET (query params) and POST (body)
     if (req.method === "GET") {
@@ -42,7 +44,7 @@ serve(async (req: Request) => {
         const body = await req.json();
         code = body.code;
         state = body.state;
-        redirectUri = body.redirect_uri || PRODUCTION_REDIRECT_URI;
+        redirectUri = body.redirect_uri || DEFAULT_REDIRECT_URI;
         console.log("POST body received:", { code: code?.substring(0, 10) + "...", state, redirectUri });
       } catch (parseErr) {
         console.error("Failed to parse request body:", parseErr);

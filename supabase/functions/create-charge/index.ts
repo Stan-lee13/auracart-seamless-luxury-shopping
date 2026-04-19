@@ -230,9 +230,11 @@ serve(async (req) => {
   } catch (error: unknown) {
     console.error("Create charge error:", error);
     const message = error instanceof Error ? error.message : "Unknown error";
+    // IMPORTANT: return 200 with structured error so the client receives the real message
+    // (supabase.functions.invoke discards body on non-2xx and surfaces a generic FunctionsHttpError).
     return new Response(
-      JSON.stringify({ error: message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      JSON.stringify({ success: false, error: message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   }
 });

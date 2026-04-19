@@ -42,6 +42,12 @@ export default async function handler(req, res) {
     const edgeFunctionUrl = `${supabaseUrl}/functions/v1/aliexpress-auth-callback`;
     console.log('Calling edge function:', edgeFunctionUrl);
     
+    // Derive origin dynamically so the redirect_uri matches what was used during authorization
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const proto = req.headers['x-forwarded-proto'] || 'https';
+    const origin = `${proto}://${host}`;
+    const redirectUri = `${origin}/api/aliexpress/callback`;
+
     const response = await fetch(edgeFunctionUrl, {
       method: 'POST',
       headers: {
@@ -51,8 +57,8 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         code: code,
-        state: state || 'https://auracartcom.vercel.app',
-        redirect_uri: 'https://auracartcom.vercel.app/api/aliexpress/callback'
+        state: state || origin,
+        redirect_uri: redirectUri
       })
     });
 

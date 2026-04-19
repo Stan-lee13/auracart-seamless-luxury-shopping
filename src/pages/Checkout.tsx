@@ -128,30 +128,31 @@ export default function Checkout() {
       });
 
       if (fnError) {
-        console.error('Edge function error:', fnError);
+        console.error('Edge function transport error:', fnError);
         throw new Error(fnError.message || 'Payment initialization failed');
       }
 
       console.log('Payment response:', resData);
-      const json = resData;
 
-      const authUrl = json?.init?.data?.authorization_url
-        || json?.init?.authorization_url
-        || json?.authorization_url
-        || null;
-      const reference = json?.order?.order_number
-        || json?.init?.data?.reference
-        || null;
+      // Server returns structured errors with 200 status
+      if (resData?.success === false || resData?.error) {
+        throw new Error(resData.error || 'Payment initialization failed');
+      }
+
+      const authUrl = resData?.authorization_url || null;
+      const reference = resData?.reference || resData?.order?.order_number || null;
 
       if (authUrl) {
-        // Store reference for confirmation page
-        localStorage.setItem('last_order_reference', reference || '');
-        // Clear cart before redirect
-        cart.clearCart();
-        // Redirect to Paystack
+        // Persist the order reference so /orders can verify on return
+        if (reference) {
+          localStorage.setItem('last_order_reference', reference);
+        }
+        // Persist mobile viewport state across the Paystack redirect
+        const isMobile = window.innerWidth < 768;
+        localStorage.setItem('userDeviceMode', isMobile ? 'mobile' : 'desktop');
+        // Do NOT clear cart yet — wait until payment is verified on /orders
         window.location.href = authUrl;
       } else if (reference) {
-        cart.clearCart();
         navigate(`/order/${encodeURIComponent(reference)}`);
       } else {
         throw new Error('No payment URL received from server');
