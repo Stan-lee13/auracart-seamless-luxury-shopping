@@ -9,6 +9,7 @@ import {
   RefreshCcw,
   AlertTriangle,
   Truck,
+  BarChart3,
   ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ const ADMIN_EMAILS = [
 ];
 
 const adminNavItems = [
+  { path: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   { path: '/admin/orders', label: 'Orders', icon: Package },
   { path: '/admin/products', label: 'Products', icon: ShoppingBag },
   { path: '/admin/refunds', label: 'Refunds', icon: RefreshCcw },
